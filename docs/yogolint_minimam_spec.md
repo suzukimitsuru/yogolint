@@ -172,14 +172,16 @@ orders
 判定順:
 
 1. deny・patternsに一致 → その項目の重大度。`position`・`kinds` の条件が合わなければ次へ進む。
-2. いずれかの層の `avoid` に一致 → 正規の語を提案し、その項目の重大度。
+2. いずれかの層の `avoid` に一致 → 正規の語を提案し、その項目の重大度。ただし正規の語が動詞・述語接頭辞のもの(`new` → create など)は、function種別の先頭語のときだけ検査する。略語の展開(cnt → count)など名詞の同義語は位置を問わない(実装時に変更。下記「実装で設計書から変えた点」)。
 3. 許可層(domain・verbs・nouns・abbrev)に一致 → 合格。
 4. 連結語として分解できた → `allowCompoundWords` に従う。
 5. どれにも当たらない → 未知語。重大度は設定 `unknownWord`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
 
+許可層に無く `minWordLength` 未満の語は、`allowSingleLetter` に無ければ連結語・未知語の判定の前に規則 `short`(warning)で報告する。
+
 品詞位置の検査(最小構成は2規則のみ):
 
-- function種別の**先頭語**は、`pos: verb` または述語接頭辞(is / has / can / should)。違反は warning。
+- function種別の**先頭語**は、`pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)。違反は warning。
 - type・value・constant種別の**末尾語**は `pos: noun`。違反は info。
 
 | 重大度 | 意味 | 終了コード |
@@ -250,7 +252,7 @@ VSCodeのAPIを直接使わずLSPにするのは、同じサーバーをNeovim�
 | --- | --- |
 | 範囲 | range(識別子のうち該当する語の部分だけ) |
 | 重大度 error / warning / info | severity Error / Warning / Information(none は送らない) |
-| 規則 deny / avoid / unknown / compound / position | code |
+| 規則 deny / avoid / unknown / compound / position / short / non-ascii / syntax | code |
 | — | source は常に yogolint |
 | 置換候補 | メッセージに表示。クイックフィックス(codeAction)は将来の拡張 |
 
@@ -406,7 +408,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 運用上の注意:
 
 - 曖昧語でも設計パターン名として定着したもの(Factory, Repository, EventHandler)や、React の onClick のようなフレームワークの慣習名は、`ignoreWords` や `kinds` で外す。
-- 業務システムの「マスタ(商品マスタなど)」は master/slave と別義である。domain層に `master` を登録するか、master の行を外す。
+- 業務システムの「マスタ(商品マスタなど)」は master/slave と別義である。禁止は許可より優先するので、domain層に `master` を登録しても禁止は外れない。`ignoreWords` に入れるか、`dicts export` で書き出した deny 辞書から master の行を外す。
 - 配慮語の置き換えには業界でも賛否がある。採用するかは組織の方針で決める。
 - ローマ字の語はこの表ではなく、未知語として検出する。
 
@@ -435,6 +437,24 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 - 書き出したファイルの先頭に、yogolint の版と「標準辞書から書き出した」旨のコメントを入れる。版を上げたときの差分の確認に使う。
 - 同じ層のファイルを `dictionaries` に指定すると、その層の埋め込み辞書は使わない(結合せず置き換える)。書き出して編集し、指定する、という手順で標準辞書を作り変えられる。
 - 埋め込み辞書を使わない層は、`builtinDictionaries` から外す。
+
+## 実装で設計書から変えた点
+
+2026年11月25日、第1段階の実装時に決めた。
+
+| 項目 | 設計書の記述 | 実装 | 理由 |
+| --- | --- | --- | --- |
+| 避ける同義語の検査位置 | 位置を問わず報告する | 正規の語が動詞・述語接頭辞なら、function種別の先頭語のときだけ報告する。名詞の同義語・略語の展開は位置を問わない | `new_value` の形容詞 new、名詞の store・change・display などまで報告されるため |
+| 関数名の先頭に置ける語 | 動詞と is / has / can / should | to(付録Aの表どおり)と from / as / into / with を述語接頭辞(`pos = "prefix"`)として verbs 層に加えた | Rust の変換関数の命名慣習(from_str、as_bytes、into_iter、with_capacity) |
+| 禁止語と domain 層 | 「禁止は常に許可より優先」と、付録Bの「domain層に master を登録する」が食い違う | 禁止を優先する。付録Bの注意書きを `ignoreWords` か deny 辞書の行を外す運用に改めた | 照合規則の原則を優先した |
+| 規則の追加 | deny / avoid / unknown / compound / position | `short`(minWordLength 未満の語、warning)、`non-ascii`(英字以外を含む識別子、info)、`syntax`(構文エラー内の定義の件数、info)を加えた | 付録Bの(1文字)と、決定事項の「英字以外の識別子」「構文エラー」を報告する規則名が無かったため |
+| 禁止パターンの照合対象 | 語ごとの判定に含む | 識別子全体(前後の `_` を除き小文字にしたもの)に照合する。辞書に数字込みで登録した語(utf8 など)だけの識別子は除く | 数字は分割で捨てられ、語単位では data1 のような連番を検出できないため |
+| 標準の verbs 辞書 | 付録Aの44語 | 対語(unlock・hide・detach・unregister・unsubscribe・pop・receive・revert)を加えた。名詞としても使う語(start・stop・format・set など)は `pos = ["verb", "noun"]` とした | 対語が未知語になり、値の名前の末尾で品詞位置の誤検出が出るため |
+| 辞書の品詞 | `pos` は1つ | 文字列か配列のどちらでもよい | 動詞と名詞を兼ねる語のため |
+| 連結語の分解 | 語数が最小 | 語数が同じなら語長の二乗和が大きい分け方を採る | savefileas が save / fil / eas に分かれるのを防ぐ |
+| 抑止コメント | 語を指定する | 語を省くと、次の行の全ての報告を抑止する | 一時的な抑止を書きやすくするため |
+| 終了コード | エラー1件以上で1 | 設定・辞書の誤りは2 | 検査結果と実行失敗を区別するため |
+| 自リポジトリの設定 | — | `ignoreWords = ["new"]`(Rust のコンストラクタの慣習名) | create を正とする付録Aのままでは全ての new が報告されるため |
 
 ## 未決事項と今後の拡張
 
