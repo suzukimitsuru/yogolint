@@ -1,0 +1,13 @@
+# yogolint 自身を検査する設定
+languages = ["rust"]
+include = ["crates/**"]
+exclude = ["**/target/**"]
+kinds = ["function", "type", "value", "constant"]
+builtinDictionaries = ["verbs", "nouns", "abbrev", "deny"]
+dictionaries = ["dicts/domain.toml"]
+unknownWord = "warning"
+allowCompoundWords = false
+minWordLength = 2
+allowSingleLetter = ["i", "j", "k", "n", "x", "y"]
+# Rust の慣習名(コンストラクタ new)
+ignoreWords = ["new"]

@@ -1,0 +1,188 @@
+# yogolint 自身のドメイン辞書(ユビキタス言語)。
+# `yogolint words` の未知語一覧から、このリポジトリの用語だけを登録した。
+version = 1
+layer = "domain"
+
+[[terms]]
+word = "yogo"
+pos = "noun"
+ja = "用語"
+definition = "日本語「用語(yōgo)」のローマ字。ローマ字の語は本来未知語として検出されるが、ツール名 yogolint の一部として例外にした。名前そのものが本ツールの検出する悪い命名の例であり、例外登録の手本として残す"
+
+[[terms]]
+word = "lint"
+pos = "noun"
+ja = "静的検査"
+definition = "ソースの問題を静的に見つけること"
+
+[[terms]]
+word = "linter"
+pos = "noun"
+ja = "検査器"
+definition = "lint を行うもの。yogolint では設定と辞書を持ちソースを検査する Linter 型"
+
+[[terms]]
+word = "term"
+pos = "noun"
+ja = "用語"
+definition = "辞書に登録した1語"
+
+[[terms]]
+word = "dict"
+pos = "noun"
+ja = "辞書"
+definition = "dictionary の略。CLI のコマンド名 dicts と揃える"
+forms = ["dicts"]
+
+[[terms]]
+word = "abbrev"
+pos = "noun"
+ja = "略語"
+definition = "略語の層の名前(abbreviation の略)。設定の層名と揃える"
+
+[[terms]]
+word = "verb"
+pos = "noun"
+ja = "動詞"
+definition = "品詞の1つ"
+forms = ["verbs"]
+
+[[terms]]
+word = "speech"
+pos = "noun"
+ja = "品詞"
+definition = "part of speech の一部"
+
+[[terms]]
+word = "deny"
+pos = "verb"
+ja = "禁止"
+definition = "禁止語として報告する。禁止の層の名前"
+forms = ["denied"]
+
+[[terms]]
+word = "allow"
+pos = "verb"
+ja = "許可"
+definition = "許可する。許可層"
+forms = ["allowed"]
+
+[[terms]]
+word = "avoid"
+pos = "verb"
+ja = "避ける"
+definition = "避ける同義語として報告する"
+
+[[terms]]
+word = "canonical"
+pos = "adjective"
+ja = "正規"
+definition = "避ける同義語に対する正規の語"
+
+[[terms]]
+word = "compound"
+pos = "noun"
+ja = "連結語"
+definition = "区切らずに書いた複数語(savefileas)"
+
+[[terms]]
+word = "verdict"
+pos = "noun"
+ja = "判定"
+definition = "1語の照合結果"
+
+[[terms]]
+word = "suggestion"
+pos = "noun"
+ja = "置換候補"
+definition = "報告に添える置換候補"
+
+[[terms]]
+word = "suggest"
+pos = "verb"
+ja = "置換候補"
+definition = "置換候補を示す。辞書 TOML のキー"
+
+[[terms]]
+word = "baseline"
+pos = "noun"
+ja = "ベースライン"
+definition = "既存の違反を記録したもの"
+
+[[terms]]
+word = "extract"
+pos = "verb"
+ja = "抽出"
+definition = "構文木から定義名を取り出す"
+
+[[terms]]
+word = "extraction"
+pos = "noun"
+ja = "抽出結果"
+definition = "1ファイルから取り出した定義名の一覧"
+
+[[terms]]
+word = "extractor"
+pos = "noun"
+ja = "抽出器"
+definition = "言語ごとの構文解析器とクエリ"
+
+[[terms]]
+word = "capture"
+pos = "noun"
+ja = "捕捉"
+definition = "tree-sitter のクエリが捕捉したノード"
+
+[[terms]]
+word = "grammar"
+pos = "noun"
+ja = "文法"
+definition = "tree-sitter の文法"
+
+[[terms]]
+word = "segment"
+pos = "noun"
+ja = "区間"
+definition = "識別子を区切り文字で分けた1区間"
+
+[[terms]]
+word = "separator"
+pos = "noun"
+ja = "区切り文字"
+definition = "識別子の区切り文字(_ - $ .)"
+
+[[terms]]
+word = "boundary"
+pos = "noun"
+ja = "境界"
+definition = "語の境界"
+
+[[terms]]
+word = "predicate"
+pos = "noun"
+ja = "述語"
+definition = "真偽を返す関数の接頭辞(is / has など)"
+
+[[terms]]
+word = "workspace"
+pos = "noun"
+ja = "作業場所"
+definition = "設定ファイルのあるディレクトリと、そこで読んだ設定・辞書"
+
+[[terms]]
+word = "rust"
+pos = "noun"
+ja = "Rust"
+definition = "検査対象の言語"
+
+[[terms]]
+word = "ja"
+pos = "noun"
+ja = "日本語"
+definition = "辞書 TOML の日本語用語のキー"
+
+[[terms]]
+word = "snake"
+pos = "noun"
+ja = "スネークケース"
+definition = "snake_case"

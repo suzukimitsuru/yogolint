@@ -1,0 +1,14 @@
+[package]
+name = "yogolint-core"
+description = "Core of yogolint: extract definition names, split into words, check them against term dictionaries"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+serde.workspace = true
+toml.workspace = true
+regex.workspace = true
