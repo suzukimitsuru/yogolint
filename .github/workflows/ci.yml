@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 書式と静的検査
+  lint:
+    name: fmt / clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  # 単体テストと CLI の結合テスト。tree-sitter の C 部分を各 OS でビルドする
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --locked
+
+  # yogolint 自身を検査する。エラーがあれば失敗し、件数をジョブの要約に残す
+  self-check:
+    name: yogolint self-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked -p yogolint
+      - name: Check
+        run: |
+          set +e
+          ./target/debug/yogolint check --format json > yogolint-report.json
+          status=$?
+          set -e
+          {
+            echo "## yogolint self-check"
+            echo
+            echo "| ファイル | エラー | 警告 | 情報 |"
+            echo "| --- | --- | --- | --- |"
+            jq -r '.summary | "| \(.files) | \(.errors) | \(.warnings) | \(.infos) |"' yogolint-report.json
+            echo
+            echo "### 未知語(上位 20)"
+            echo
+            echo '```text'
+            ./target/debug/yogolint words --limit 20 2>/dev/null
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yogolint-report
+          path: yogolint-report.json
