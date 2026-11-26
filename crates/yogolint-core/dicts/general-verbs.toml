@@ -1,0 +1,394 @@
+# yogolint 標準辞書: 汎用動詞(設計書 付録A)。語そのものは許可。
+# severity は avoid の語を使ったときの重大度。
+version = 1
+layer = "verbs"
+
+[[terms]]
+word = "get"
+pos = "verb"
+definition = "手元にある値・属性を返す。副作用なし、失敗しない"
+pair = ["set"]
+avoid = ["retrieve", "obtain"]
+severity = "warning"
+
+[[terms]]
+word = "set"
+pos = ["verb", "noun"]
+definition = "値を丸ごと置き換える"
+pair = ["get"]
+avoid = ["assign"]
+severity = "warning"
+
+[[terms]]
+word = "find"
+pos = "verb"
+definition = "条件に合う1件を探す。無ければ null や空を返す"
+avoid = ["locate", "lookup"]
+severity = "warning"
+
+[[terms]]
+word = "search"
+pos = ["verb", "noun"]
+definition = "条件に合う複数件を探し、集合を返す"
+avoid = ["seek"]
+severity = "info"
+
+[[terms]]
+word = "fetch"
+pos = "verb"
+definition = "ネットワークなど外部から取り込む。遅延・失敗あり"
+avoid = ["download", "pull"]
+severity = "warning"
+
+[[terms]]
+word = "load"
+pos = "verb"
+definition = "ファイル・DBなどの保存先から読み込む"
+pair = ["save"]
+
+[[terms]]
+word = "save"
+pos = "verb"
+definition = "保存先へ書き出して永続化する"
+pair = ["load"]
+avoid = ["persist", "store"]
+severity = "warning"
+
+[[terms]]
+word = "read"
+pos = "verb"
+definition = "ストリームなどから順に読む"
+pair = ["write"]
+
+[[terms]]
+word = "write"
+pos = "verb"
+definition = "ストリームなどへ順に書く"
+pair = ["read"]
+
+[[terms]]
+word = "create"
+pos = "verb"
+definition = "新しい資源を生成して返す"
+pair = ["delete"]
+avoid = ["make", "generate", "new"]
+severity = "warning"
+
+[[terms]]
+word = "build"
+pos = ["verb", "noun"]
+definition = "部品を組み立てて作る(Builder)"
+avoid = ["construct", "assemble"]
+severity = "info"
+
+[[terms]]
+word = "copy"
+pos = ["verb", "noun"]
+definition = "同じ内容の別物を作る"
+avoid = ["clone", "duplicate"]
+severity = "info"
+
+[[terms]]
+word = "add"
+pos = "verb"
+definition = "入れ物に要素を加える(位置は問わない)"
+pair = ["remove"]
+
+[[terms]]
+word = "remove"
+pos = "verb"
+definition = "入れ物から要素を外す。要素自体は残る"
+pair = ["add"]
+avoid = ["eliminate", "drop"]
+severity = "warning"
+
+[[terms]]
+word = "insert"
+pos = "verb"
+definition = "位置を指定して入れる"
+
+[[terms]]
+word = "delete"
+pos = "verb"
+definition = "資源そのものを消す(永続データを含む)"
+pair = ["create"]
+avoid = ["erase", "destroy", "kill"]
+severity = "warning"
+
+[[terms]]
+word = "update"
+pos = ["verb", "noun"]
+definition = "既存の資源を部分的に変える"
+avoid = ["modify", "change", "edit", "alter"]
+severity = "warning"
+
+[[terms]]
+word = "clear"
+pos = "verb"
+definition = "中身を空にする。入れ物は残る"
+avoid = ["wipe", "purge"]
+severity = "warning"
+
+[[terms]]
+word = "reset"
+pos = ["verb", "noun"]
+definition = "初期状態に戻す"
+avoid = ["reinit"]
+severity = "info"
+
+[[terms]]
+word = "init"
+pos = "verb"
+definition = "初期化して使える状態にする"
+pair = ["dispose"]
+avoid = ["initialize", "setup"]
+severity = "warning"
+
+[[terms]]
+word = "dispose"
+pos = "verb"
+definition = "保持している資源を解放する"
+pair = ["init"]
+avoid = ["release", "free"]
+severity = "warning"
+
+[[terms]]
+word = "open"
+pos = "verb"
+definition = "接続やハンドルを得て使える状態にする"
+pair = ["close"]
+
+[[terms]]
+word = "close"
+pos = "verb"
+definition = "接続やハンドルを閉じる"
+pair = ["open"]
+avoid = ["shut"]
+severity = "info"
+
+[[terms]]
+word = "start"
+pos = ["verb", "noun"]
+definition = "処理・タスクを開始する"
+pair = ["stop"]
+avoid = ["begin", "launch"]
+severity = "info"
+
+[[terms]]
+word = "stop"
+pos = ["verb", "noun"]
+definition = "処理・タスクを止める"
+pair = ["start"]
+avoid = ["halt"]
+severity = "info"
+
+[[terms]]
+word = "enable"
+pos = "verb"
+definition = "機能を有効にする"
+pair = ["disable"]
+avoid = ["activate"]
+severity = "info"
+
+[[terms]]
+word = "disable"
+pos = "verb"
+definition = "機能を無効にする"
+pair = ["enable"]
+avoid = ["deactivate"]
+severity = "info"
+
+[[terms]]
+word = "lock"
+pos = ["verb", "noun"]
+definition = "排他を得る"
+pair = ["unlock"]
+avoid = ["acquire"]
+severity = "info"
+
+[[terms]]
+word = "show"
+pos = "verb"
+definition = "表示する"
+pair = ["hide"]
+avoid = ["display"]
+severity = "info"
+
+[[terms]]
+word = "attach"
+pos = "verb"
+definition = "対象に付ける・関連づける"
+pair = ["detach"]
+
+[[terms]]
+word = "register"
+pos = "verb"
+definition = "一覧や仕組みに登録する"
+pair = ["unregister"]
+avoid = ["enroll"]
+severity = "info"
+
+[[terms]]
+word = "subscribe"
+pos = "verb"
+definition = "通知を購読する"
+pair = ["unsubscribe"]
+avoid = ["listen"]
+severity = "info"
+
+[[terms]]
+word = "push"
+pos = "verb"
+definition = "スタックの端に積む"
+pair = ["pop"]
+
+[[terms]]
+word = "send"
+pos = "verb"
+definition = "相手へ送る"
+pair = ["receive"]
+avoid = ["transmit"]
+severity = "info"
+
+[[terms]]
+word = "parse"
+pos = "verb"
+definition = "文字列を構造へ変える"
+pair = ["format"]
+
+[[terms]]
+word = "format"
+pos = ["verb", "noun"]
+definition = "構造を文字列へ変える"
+pair = ["parse"]
+avoid = ["stringify"]
+severity = "info"
+
+[[terms]]
+word = "to"
+pos = "prefix"
+definition = "型や形式を変える(toXxx の形で使う)"
+avoid = ["convert", "transform"]
+severity = "info"
+
+[[terms]]
+word = "validate"
+pos = "verb"
+definition = "検証し、不正なら例外やエラー結果を返す"
+avoid = ["verify", "check"]
+severity = "warning"
+
+[[terms]]
+word = "compute"
+pos = "verb"
+definition = "入力から値を計算する。副作用なし"
+avoid = ["calc", "calculate"]
+severity = "warning"
+
+[[terms]]
+word = "apply"
+pos = "verb"
+definition = "設定や変更を対象に反映する"
+pair = ["revert"]
+
+[[terms]]
+word = "run"
+pos = ["verb", "noun"]
+definition = "処理を実行する"
+avoid = ["execute", "exec", "perform"]
+severity = "info"
+
+[[terms]]
+word = "notify"
+pos = "verb"
+definition = "変化を相手に知らせる"
+avoid = ["inform"]
+severity = "info"
+
+[[terms]]
+word = "is"
+pos = "prefix"
+definition = "状態の真偽を返す(isEmpty)"
+
+[[terms]]
+word = "has"
+pos = "prefix"
+definition = "所有を真偽で返す(hasChildren)"
+
+[[terms]]
+word = "can"
+pos = "prefix"
+definition = "可否を真偽で返す(canEdit)"
+
+[[terms]]
+word = "should"
+pos = "prefix"
+definition = "要否を真偽で返す(shouldRetry)"
+
+[[terms]]
+word = "unlock"
+pos = "verb"
+definition = "排他を手放す"
+pair = ["lock"]
+
+[[terms]]
+word = "hide"
+pos = "verb"
+definition = "表示を消す"
+pair = ["show"]
+
+[[terms]]
+word = "detach"
+pos = "verb"
+definition = "対象から外す・関連を解く"
+pair = ["attach"]
+
+[[terms]]
+word = "unregister"
+pos = "verb"
+definition = "一覧や仕組みから登録を外す"
+pair = ["register"]
+
+[[terms]]
+word = "unsubscribe"
+pos = "verb"
+definition = "通知の購読をやめる"
+pair = ["subscribe"]
+
+[[terms]]
+word = "pop"
+pos = "verb"
+definition = "スタックの端から取り出す"
+pair = ["push"]
+
+[[terms]]
+word = "receive"
+pos = "verb"
+definition = "相手から受け取る"
+pair = ["send"]
+
+[[terms]]
+word = "revert"
+pos = "verb"
+definition = "反映した設定や変更を元に戻す"
+pair = ["apply"]
+[[terms]]
+word = "from"
+pos = "prefix"
+definition = "別の型から作る(fromXxx の形で使う。Rust の変換の命名規約)"
+
+[[terms]]
+word = "as"
+pos = "prefix"
+definition = "安価に別の型として見る(asXxx の形で使う)"
+
+[[terms]]
+word = "into"
+pos = "prefix"
+definition = "所有権を渡して別の型に変える(intoXxx の形で使う)"
+
+[[terms]]
+word = "with"
+pos = "prefix"
+definition = "値を1つ変えた新しい値を返す(withXxx の形で使う)"
+

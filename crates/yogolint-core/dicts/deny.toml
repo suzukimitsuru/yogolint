@@ -1,0 +1,194 @@
+# yogolint 標準辞書: 禁止語(設計書 付録B)。
+# reason は禁止の理由、suggest は置換候補。avoid は同じ理由で禁止する異表記。
+# position = "first" / "last" はその位置の語のときだけ、kinds はその種別のときだけ検査する。
+version = 1
+layer = "deny"
+
+[[deny]]
+word = "manager"
+pos = "noun"
+reason = "「管理するもの」以上の意味がなく、無関係な処理が集まる"
+suggest = "責務を表す名詞(Repository, Pool, Registry)"
+avoid = ["mgr", "management"]
+position = "last"
+kinds = ["type"]
+severity = "warning"
+
+[[deny]]
+word = "helper"
+pos = "noun"
+reason = "何でも「助け」になり、責務が散らばる"
+suggest = "操作対象の型へメソッドを移す"
+avoid = ["helpers"]
+severity = "warning"
+
+[[deny]]
+word = "util"
+pos = "noun"
+reason = "雑多な関数の置き場になる"
+suggest = "機能ごとのモジュール名"
+avoid = ["utils", "utility", "misc"]
+severity = "warning"
+
+[[deny]]
+word = "processor"
+pos = "noun"
+reason = "何を処理するか語らない"
+suggest = "処理内容を表す名詞(Parser, Validator)"
+avoid = ["processing"]
+severity = "warning"
+
+[[deny]]
+word = "data"
+pos = "noun"
+reason = "Product と ProductData の違いが分からない雑音語"
+suggest = "取り除く、または中身を表す語"
+position = "last"
+severity = "warning"
+
+[[deny]]
+word = "info"
+pos = "noun"
+reason = "data と同じ雑音語"
+suggest = "取り除く、または中身を表す語"
+avoid = ["information"]
+severity = "warning"
+
+[[deny]]
+word = "object"
+pos = "noun"
+reason = "すべてが当てはまり区別にならない"
+suggest = "型の名前そのもの"
+avoid = ["obj", "thing", "stuff"]
+severity = "warning"
+
+[[deny]]
+word = "item"
+pos = "noun"
+reason = "要素であること以外を語らない"
+suggest = "要素の種類を表す名詞"
+severity = "info"
+
+[[deny]]
+word = "base"
+pos = "noun"
+reason = "継承関係を名前に持ち込む"
+suggest = "抽象の意味を表す名詞(Shape)"
+severity = "info"
+
+[[deny]]
+word = "common"
+pos = "adjective"
+reason = "雑多な共有物の置き場になる"
+suggest = "機能名"
+avoid = ["shared", "general"]
+severity = "warning"
+
+[[deny]]
+word = "temp"
+pos = "adjective"
+reason = "何の一時値か語らない"
+suggest = "値の意味を表す名詞"
+avoid = ["tmp"]
+severity = "warning"
+
+[[deny]]
+word = "flag"
+pos = "noun"
+reason = "何が真なのか語らない"
+suggest = "isXxx, hasXxx"
+severity = "warning"
+
+[[deny]]
+word = "do"
+pos = "verb"
+reason = "何をするか語らない"
+suggest = "付録Aの具体的な動詞"
+avoid = ["process"]
+position = "first"
+kinds = ["function"]
+severity = "warning"
+
+[[deny]]
+word = "handle"
+pos = "verb"
+reason = "いつ呼ばれるかを示すだけで、何をするか語らない"
+suggest = "処理内容を表す動詞"
+avoid = ["on"]
+position = "first"
+kinds = ["function"]
+severity = "info"
+
+[[deny]]
+word = "foo"
+pos = "noun"
+reason = "意味のない仮名"
+suggest = "意味のある名前"
+avoid = ["bar", "baz", "qux", "hoge", "fuga", "piyo"]
+severity = "error"
+
+[[deny]]
+word = "klass"
+pos = "noun"
+reason = "予約語を避けた綴り換えで紛らわしい"
+suggest = "対象を表す語"
+avoid = ["clazz"]
+severity = "info"
+
+[[deny]]
+word = "str"
+pos = "prefix"
+reason = "型を名前に重ねるハンガリアン記法。型は型システムが示す"
+suggest = "取り除く"
+avoid = ["int", "arr", "sz", "lp", "psz"]
+position = "first"
+severity = "warning"
+
+[[deny]]
+word = "whitelist"
+pos = "noun"
+reason = "白=良・黒=悪の比喩を持ち込む"
+suggest = "allowlist"
+severity = "warning"
+
+[[deny]]
+word = "blacklist"
+pos = "noun"
+reason = "白=良・黒=悪の比喩を持ち込む"
+suggest = "denylist, blocklist"
+severity = "warning"
+
+[[deny]]
+word = "master"
+pos = "noun"
+reason = "master/slave の比喩"
+suggest = "primary, main"
+severity = "warning"
+
+[[deny]]
+word = "slave"
+pos = "noun"
+reason = "奴隷制の比喩"
+suggest = "replica, secondary, worker"
+severity = "warning"
+
+[[deny]]
+word = "sanity"
+pos = "noun"
+reason = "精神状態を比喩に使う"
+suggest = "confidence, coherence"
+severity = "info"
+
+[[deny]]
+word = "dummy"
+pos = "noun"
+reason = "配慮語とする指針がある"
+suggest = "placeholder, stub"
+severity = "info"
+
+# 連番(data1, a2 など)。識別子全体(前後の _ を除き小文字にしたもの)に照合する。
+[[patterns]]
+regex = '^[a-z]+_?\d+$'
+reason = "連番は意図を表さない"
+suggest = "違いを表す語"
+severity = "error"

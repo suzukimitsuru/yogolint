@@ -1,0 +1,1464 @@
+# yogolint 標準辞書: 汎用・技術名詞。
+# 名前を組み立てるときに使う形容詞・前置詞なども、品詞を付けてここに置く。
+version = 1
+layer = "nouns"
+
+[[terms]]
+word = "account"
+pos = "noun"
+
+[[terms]]
+word = "action"
+pos = "noun"
+
+[[terms]]
+word = "address"
+pos = "noun"
+
+[[terms]]
+word = "age"
+pos = "noun"
+
+[[terms]]
+word = "agent"
+pos = "noun"
+
+[[terms]]
+word = "alias"
+pos = "noun"
+
+[[terms]]
+word = "amount"
+pos = "noun"
+
+[[terms]]
+word = "answer"
+pos = "noun"
+
+[[terms]]
+word = "app"
+pos = "noun"
+
+[[terms]]
+word = "argument"
+pos = "noun"
+
+[[terms]]
+word = "array"
+pos = "noun"
+
+[[terms]]
+word = "attribute"
+pos = "noun"
+
+[[terms]]
+word = "author"
+pos = "noun"
+
+[[terms]]
+word = "backend"
+pos = "noun"
+
+[[terms]]
+word = "batch"
+pos = "noun"
+
+[[terms]]
+word = "body"
+pos = "noun"
+
+[[terms]]
+word = "bool"
+pos = "noun"
+
+[[terms]]
+word = "boolean"
+pos = "noun"
+
+[[terms]]
+word = "border"
+pos = "noun"
+
+[[terms]]
+word = "bound"
+pos = "noun"
+
+[[terms]]
+word = "box"
+pos = "noun"
+
+[[terms]]
+word = "branch"
+pos = "noun"
+
+[[terms]]
+word = "buffer"
+pos = "noun"
+
+[[terms]]
+word = "bug"
+pos = "noun"
+
+[[terms]]
+word = "builder"
+pos = "noun"
+
+[[terms]]
+word = "bundle"
+pos = "noun"
+
+[[terms]]
+word = "byte"
+pos = "noun"
+
+[[terms]]
+word = "cache"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "call"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "callback"
+pos = "noun"
+
+[[terms]]
+word = "capacity"
+pos = "noun"
+
+[[terms]]
+word = "case"
+pos = "noun"
+
+[[terms]]
+word = "category"
+pos = "noun"
+
+[[terms]]
+word = "cell"
+pos = "noun"
+
+[[terms]]
+word = "channel"
+pos = "noun"
+
+[[terms]]
+word = "char"
+pos = "noun"
+
+[[terms]]
+word = "character"
+pos = "noun"
+
+[[terms]]
+word = "child"
+pos = "noun"
+
+[[terms]]
+word = "children"
+pos = "noun"
+
+[[terms]]
+word = "class"
+pos = "noun"
+
+[[terms]]
+word = "client"
+pos = "noun"
+
+[[terms]]
+word = "code"
+pos = "noun"
+
+[[terms]]
+word = "collection"
+pos = "noun"
+
+[[terms]]
+word = "color"
+pos = "noun"
+
+[[terms]]
+word = "column"
+pos = "noun"
+
+[[terms]]
+word = "command"
+pos = "noun"
+
+[[terms]]
+word = "comment"
+pos = "noun"
+
+[[terms]]
+word = "commit"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "component"
+pos = "noun"
+
+[[terms]]
+word = "condition"
+pos = "noun"
+
+[[terms]]
+word = "config"
+pos = "noun"
+
+[[terms]]
+word = "connection"
+pos = "noun"
+
+[[terms]]
+word = "constant"
+pos = "noun"
+
+[[terms]]
+word = "container"
+pos = "noun"
+
+[[terms]]
+word = "content"
+pos = "noun"
+
+[[terms]]
+word = "context"
+pos = "noun"
+
+[[terms]]
+word = "count"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "counter"
+pos = "noun"
+
+[[terms]]
+word = "country"
+pos = "noun"
+
+[[terms]]
+word = "currency"
+pos = "noun"
+
+[[terms]]
+word = "cursor"
+pos = "noun"
+
+[[terms]]
+word = "customer"
+pos = "noun"
+
+[[terms]]
+word = "database"
+pos = "noun"
+
+[[terms]]
+word = "date"
+pos = "noun"
+
+[[terms]]
+word = "day"
+pos = "noun"
+
+[[terms]]
+word = "default"
+pos = "noun"
+
+[[terms]]
+word = "definition"
+pos = "noun"
+
+[[terms]]
+word = "delay"
+pos = "noun"
+
+[[terms]]
+word = "depth"
+pos = "noun"
+
+[[terms]]
+word = "detail"
+pos = "noun"
+
+[[terms]]
+word = "device"
+pos = "noun"
+
+[[terms]]
+word = "dictionary"
+pos = "noun"
+
+[[terms]]
+word = "diff"
+pos = "noun"
+
+[[terms]]
+word = "digit"
+pos = "noun"
+
+[[terms]]
+word = "dimension"
+pos = "noun"
+
+[[terms]]
+word = "directory"
+pos = "noun"
+
+[[terms]]
+word = "document"
+pos = "noun"
+
+[[terms]]
+word = "domain"
+pos = "noun"
+
+[[terms]]
+word = "duration"
+pos = "noun"
+
+[[terms]]
+word = "edge"
+pos = "noun"
+
+[[terms]]
+word = "element"
+pos = "noun"
+
+[[terms]]
+word = "email"
+pos = "noun"
+
+[[terms]]
+word = "encoding"
+pos = "noun"
+
+[[terms]]
+word = "end"
+pos = "noun"
+
+[[terms]]
+word = "endpoint"
+pos = "noun"
+
+[[terms]]
+word = "engine"
+pos = "noun"
+
+[[terms]]
+word = "entity"
+pos = "noun"
+
+[[terms]]
+word = "entry"
+pos = "noun"
+
+[[terms]]
+word = "environment"
+pos = "noun"
+
+[[terms]]
+word = "error"
+pos = "noun"
+
+[[terms]]
+word = "event"
+pos = "noun"
+
+[[terms]]
+word = "exception"
+pos = "noun"
+
+[[terms]]
+word = "exit"
+pos = "noun"
+
+[[terms]]
+word = "expression"
+pos = "noun"
+
+[[terms]]
+word = "extension"
+pos = "noun"
+
+[[terms]]
+word = "factory"
+pos = "noun"
+
+[[terms]]
+word = "feature"
+pos = "noun"
+
+[[terms]]
+word = "field"
+pos = "noun"
+
+[[terms]]
+word = "file"
+pos = "noun"
+
+[[terms]]
+word = "filter"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "finding"
+pos = "noun"
+
+[[terms]]
+word = "first"
+pos = "noun"
+
+[[terms]]
+word = "flow"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "folder"
+pos = "noun"
+
+[[terms]]
+word = "font"
+pos = "noun"
+
+[[terms]]
+word = "form"
+pos = "noun"
+
+[[terms]]
+word = "frame"
+pos = "noun"
+
+[[terms]]
+word = "function"
+pos = "noun"
+
+[[terms]]
+word = "group"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "handler"
+pos = "noun"
+
+[[terms]]
+word = "hash"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "head"
+pos = "noun"
+
+[[terms]]
+word = "header"
+pos = "noun"
+
+[[terms]]
+word = "height"
+pos = "noun"
+
+[[terms]]
+word = "history"
+pos = "noun"
+
+[[terms]]
+word = "host"
+pos = "noun"
+
+[[terms]]
+word = "hour"
+pos = "noun"
+
+[[terms]]
+word = "id"
+pos = "noun"
+
+[[terms]]
+word = "identifier"
+pos = "noun"
+
+[[terms]]
+word = "image"
+pos = "noun"
+
+[[terms]]
+word = "index"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "input"
+pos = "noun"
+
+[[terms]]
+word = "instance"
+pos = "noun"
+
+[[terms]]
+word = "integer"
+pos = "noun"
+
+[[terms]]
+word = "interface"
+pos = "noun"
+
+[[terms]]
+word = "interval"
+pos = "noun"
+
+[[terms]]
+word = "issue"
+pos = "noun"
+
+[[terms]]
+word = "job"
+pos = "noun"
+
+[[terms]]
+word = "key"
+pos = "noun"
+
+[[terms]]
+word = "kind"
+pos = "noun"
+
+[[terms]]
+word = "label"
+pos = "noun"
+
+[[terms]]
+word = "language"
+pos = "noun"
+
+[[terms]]
+word = "layer"
+pos = "noun"
+
+[[terms]]
+word = "layout"
+pos = "noun"
+
+[[terms]]
+word = "length"
+pos = "noun"
+
+[[terms]]
+word = "level"
+pos = "noun"
+
+[[terms]]
+word = "library"
+pos = "noun"
+
+[[terms]]
+word = "limit"
+pos = "noun"
+
+[[terms]]
+word = "line"
+pos = "noun"
+
+[[terms]]
+word = "link"
+pos = "noun"
+
+[[terms]]
+word = "list"
+pos = "noun"
+
+[[terms]]
+word = "listener"
+pos = "noun"
+
+[[terms]]
+word = "locale"
+pos = "noun"
+
+[[terms]]
+word = "location"
+pos = "noun"
+
+[[terms]]
+word = "log"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "logger"
+pos = "noun"
+
+[[terms]]
+word = "loop"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "map"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "mark"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "match"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "max"
+pos = "noun"
+
+[[terms]]
+word = "member"
+pos = "noun"
+
+[[terms]]
+word = "memory"
+pos = "noun"
+
+[[terms]]
+word = "message"
+pos = "noun"
+
+[[terms]]
+word = "meta"
+pos = "noun"
+
+[[terms]]
+word = "method"
+pos = "noun"
+
+[[terms]]
+word = "min"
+pos = "noun"
+
+[[terms]]
+word = "minute"
+pos = "noun"
+
+[[terms]]
+word = "mode"
+pos = "noun"
+
+[[terms]]
+word = "model"
+pos = "noun"
+
+[[terms]]
+word = "module"
+pos = "noun"
+
+[[terms]]
+word = "month"
+pos = "noun"
+
+[[terms]]
+word = "name"
+pos = "noun"
+
+[[terms]]
+word = "namespace"
+pos = "noun"
+
+[[terms]]
+word = "node"
+pos = "noun"
+
+[[terms]]
+word = "note"
+pos = "noun"
+
+[[terms]]
+word = "number"
+pos = "noun"
+
+[[terms]]
+word = "offset"
+pos = "noun"
+
+[[terms]]
+word = "operation"
+pos = "noun"
+
+[[terms]]
+word = "operator"
+pos = "noun"
+
+[[terms]]
+word = "option"
+pos = "noun"
+
+[[terms]]
+word = "order"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "origin"
+pos = "noun"
+
+[[terms]]
+word = "output"
+pos = "noun"
+
+[[terms]]
+word = "owner"
+pos = "noun"
+
+[[terms]]
+word = "package"
+pos = "noun"
+
+[[terms]]
+word = "page"
+pos = "noun"
+
+[[terms]]
+word = "pair"
+pos = "noun"
+
+[[terms]]
+word = "panel"
+pos = "noun"
+
+[[terms]]
+word = "parameter"
+pos = "noun"
+
+[[terms]]
+word = "parent"
+pos = "noun"
+
+[[terms]]
+word = "parser"
+pos = "noun"
+
+[[terms]]
+word = "part"
+pos = "noun"
+
+[[terms]]
+word = "path"
+pos = "noun"
+
+[[terms]]
+word = "pattern"
+pos = "noun"
+
+[[terms]]
+word = "payload"
+pos = "noun"
+
+[[terms]]
+word = "peer"
+pos = "noun"
+
+[[terms]]
+word = "period"
+pos = "noun"
+
+[[terms]]
+word = "permission"
+pos = "noun"
+
+[[terms]]
+word = "phase"
+pos = "noun"
+
+[[terms]]
+word = "point"
+pos = "noun"
+
+[[terms]]
+word = "policy"
+pos = "noun"
+
+[[terms]]
+word = "pool"
+pos = "noun"
+
+[[terms]]
+word = "port"
+pos = "noun"
+
+[[terms]]
+word = "position"
+pos = "noun"
+
+[[terms]]
+word = "prefix"
+pos = "noun"
+
+[[terms]]
+word = "price"
+pos = "noun"
+
+[[terms]]
+word = "priority"
+pos = "noun"
+
+[[terms]]
+word = "problem"
+pos = "noun"
+
+[[terms]]
+word = "process"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "product"
+pos = "noun"
+
+[[terms]]
+word = "profile"
+pos = "noun"
+
+[[terms]]
+word = "project"
+pos = "noun"
+
+[[terms]]
+word = "property"
+pos = "noun"
+
+[[terms]]
+word = "protocol"
+pos = "noun"
+
+[[terms]]
+word = "provider"
+pos = "noun"
+
+[[terms]]
+word = "query"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "queue"
+pos = "noun"
+
+[[terms]]
+word = "range"
+pos = "noun"
+
+[[terms]]
+word = "rate"
+pos = "noun"
+
+[[terms]]
+word = "reason"
+pos = "noun"
+
+[[terms]]
+word = "record"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "reference"
+pos = "noun"
+
+[[terms]]
+word = "region"
+pos = "noun"
+
+[[terms]]
+word = "registry"
+pos = "noun"
+
+[[terms]]
+word = "release"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "report"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "repository"
+pos = "noun"
+
+[[terms]]
+word = "request"
+pos = "noun"
+
+[[terms]]
+word = "resource"
+pos = "noun"
+
+[[terms]]
+word = "response"
+pos = "noun"
+
+[[terms]]
+word = "result"
+pos = "noun"
+
+[[terms]]
+word = "retry"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "role"
+pos = "noun"
+
+[[terms]]
+word = "root"
+pos = "noun"
+
+[[terms]]
+word = "route"
+pos = "noun"
+
+[[terms]]
+word = "row"
+pos = "noun"
+
+[[terms]]
+word = "rule"
+pos = "noun"
+
+[[terms]]
+word = "runtime"
+pos = "noun"
+
+[[terms]]
+word = "schema"
+pos = "noun"
+
+[[terms]]
+word = "scope"
+pos = "noun"
+
+[[terms]]
+word = "score"
+pos = "noun"
+
+[[terms]]
+word = "second"
+pos = "noun"
+
+[[terms]]
+word = "section"
+pos = "noun"
+
+[[terms]]
+word = "seed"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "selector"
+pos = "noun"
+
+[[terms]]
+word = "sequence"
+pos = "noun"
+
+[[terms]]
+word = "server"
+pos = "noun"
+
+[[terms]]
+word = "service"
+pos = "noun"
+
+[[terms]]
+word = "session"
+pos = "noun"
+
+[[terms]]
+word = "setting"
+pos = "noun"
+
+[[terms]]
+word = "severity"
+pos = "noun"
+
+[[terms]]
+word = "shape"
+pos = "noun"
+
+[[terms]]
+word = "signal"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "size"
+pos = "noun"
+
+[[terms]]
+word = "slot"
+pos = "noun"
+
+[[terms]]
+word = "snapshot"
+pos = "noun"
+
+[[terms]]
+word = "socket"
+pos = "noun"
+
+[[terms]]
+word = "source"
+pos = "noun"
+
+[[terms]]
+word = "span"
+pos = "noun"
+
+[[terms]]
+word = "spec"
+pos = "noun"
+
+[[terms]]
+word = "stack"
+pos = "noun"
+
+[[terms]]
+word = "state"
+pos = "noun"
+
+[[terms]]
+word = "statement"
+pos = "noun"
+
+[[terms]]
+word = "status"
+pos = "noun"
+
+[[terms]]
+word = "step"
+pos = "noun"
+
+[[terms]]
+word = "storage"
+pos = "noun"
+
+[[terms]]
+word = "stream"
+pos = "noun"
+
+[[terms]]
+word = "string"
+pos = "noun"
+
+[[terms]]
+word = "struct"
+pos = "noun"
+
+[[terms]]
+word = "style"
+pos = "noun"
+
+[[terms]]
+word = "subject"
+pos = "noun"
+
+[[terms]]
+word = "suffix"
+pos = "noun"
+
+[[terms]]
+word = "summary"
+pos = "noun"
+
+[[terms]]
+word = "symbol"
+pos = "noun"
+
+[[terms]]
+word = "syntax"
+pos = "noun"
+
+[[terms]]
+word = "system"
+pos = "noun"
+
+[[terms]]
+word = "table"
+pos = "noun"
+
+[[terms]]
+word = "tag"
+pos = "noun"
+
+[[terms]]
+word = "target"
+pos = "noun"
+
+[[terms]]
+word = "task"
+pos = "noun"
+
+[[terms]]
+word = "template"
+pos = "noun"
+
+[[terms]]
+word = "term"
+pos = "noun"
+
+[[terms]]
+word = "test"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "text"
+pos = "noun"
+
+[[terms]]
+word = "thread"
+pos = "noun"
+
+[[terms]]
+word = "threshold"
+pos = "noun"
+
+[[terms]]
+word = "time"
+pos = "noun"
+
+[[terms]]
+word = "timeout"
+pos = "noun"
+
+[[terms]]
+word = "timer"
+pos = "noun"
+
+[[terms]]
+word = "title"
+pos = "noun"
+
+[[terms]]
+word = "token"
+pos = "noun"
+
+[[terms]]
+word = "tool"
+pos = "noun"
+
+[[terms]]
+word = "total"
+pos = "noun"
+
+[[terms]]
+word = "trace"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "transaction"
+pos = "noun"
+
+[[terms]]
+word = "tree"
+pos = "noun"
+
+[[terms]]
+word = "trigger"
+pos = ["noun", "verb"]
+
+[[terms]]
+word = "type"
+pos = "noun"
+
+[[terms]]
+word = "unit"
+pos = "noun"
+
+[[terms]]
+word = "url"
+pos = "noun"
+
+[[terms]]
+word = "user"
+pos = "noun"
+
+[[terms]]
+word = "value"
+pos = "noun"
+
+[[terms]]
+word = "variable"
+pos = "noun"
+
+[[terms]]
+word = "vector"
+pos = "noun"
+
+[[terms]]
+word = "version"
+pos = "noun"
+
+[[terms]]
+word = "view"
+pos = "noun"
+
+[[terms]]
+word = "warning"
+pos = "noun"
+
+[[terms]]
+word = "week"
+pos = "noun"
+
+[[terms]]
+word = "weight"
+pos = "noun"
+
+[[terms]]
+word = "width"
+pos = "noun"
+
+[[terms]]
+word = "window"
+pos = "noun"
+
+[[terms]]
+word = "word"
+pos = "noun"
+
+[[terms]]
+word = "worker"
+pos = "noun"
+
+[[terms]]
+word = "year"
+pos = "noun"
+
+[[terms]]
+word = "zone"
+pos = "noun"
+
+[[terms]]
+word = "active"
+pos = "adjective"
+
+[[terms]]
+word = "all"
+pos = "adjective"
+
+[[terms]]
+word = "any"
+pos = "adjective"
+
+[[terms]]
+word = "available"
+pos = "adjective"
+
+[[terms]]
+word = "current"
+pos = "adjective"
+
+[[terms]]
+word = "empty"
+pos = "adjective"
+
+[[terms]]
+word = "enabled"
+pos = "adjective"
+
+[[terms]]
+word = "external"
+pos = "adjective"
+
+[[terms]]
+word = "full"
+pos = "adjective"
+
+[[terms]]
+word = "global"
+pos = "adjective"
+
+[[terms]]
+word = "internal"
+pos = "adjective"
+
+[[terms]]
+word = "invalid"
+pos = "adjective"
+
+[[terms]]
+word = "last"
+pos = "adjective"
+
+[[terms]]
+word = "local"
+pos = "adjective"
+
+[[terms]]
+word = "main"
+pos = "adjective"
+
+[[terms]]
+word = "missing"
+pos = "adjective"
+
+[[terms]]
+word = "new"
+pos = "adjective"
+
+[[terms]]
+word = "next"
+pos = "adjective"
+
+[[terms]]
+word = "null"
+pos = "adjective"
+
+[[terms]]
+word = "optional"
+pos = "adjective"
+
+[[terms]]
+word = "other"
+pos = "adjective"
+
+[[terms]]
+word = "own"
+pos = "adjective"
+
+[[terms]]
+word = "previous"
+pos = "adjective"
+
+[[terms]]
+word = "primary"
+pos = "adjective"
+
+[[terms]]
+word = "private"
+pos = "adjective"
+
+[[terms]]
+word = "public"
+pos = "adjective"
+
+[[terms]]
+word = "raw"
+pos = "adjective"
+
+[[terms]]
+word = "ready"
+pos = "adjective"
+
+[[terms]]
+word = "required"
+pos = "adjective"
+
+[[terms]]
+word = "same"
+pos = "adjective"
+
+[[terms]]
+word = "secondary"
+pos = "adjective"
+
+[[terms]]
+word = "single"
+pos = "adjective"
+
+[[terms]]
+word = "valid"
+pos = "adjective"
+
+[[terms]]
+word = "visible"
+pos = "adjective"
+
+[[terms]]
+word = "already"
+pos = "adverb"
+
+[[terms]]
+word = "else"
+pos = "adverb"
+
+[[terms]]
+word = "not"
+pos = "adverb"
+
+[[terms]]
+word = "only"
+pos = "adverb"
+
+[[terms]]
+word = "at"
+pos = "preposition"
+
+[[terms]]
+word = "by"
+pos = "preposition"
+
+[[terms]]
+word = "for"
+pos = "preposition"
+
+[[terms]]
+word = "in"
+pos = "preposition"
+
+[[terms]]
+word = "of"
+pos = "preposition"
+
+[[terms]]
+word = "on"
+pos = "preposition"
+
+[[terms]]
+word = "out"
+pos = "preposition"
+
+[[terms]]
+word = "over"
+pos = "preposition"
+
+[[terms]]
+word = "per"
+pos = "preposition"
+
+[[terms]]
+word = "under"
+pos = "preposition"
+
+[[terms]]
+word = "without"
+pos = "preposition"
+
+[[terms]]
+word = "a"
+pos = "determiner"
+
+[[terms]]
+word = "an"
+pos = "determiner"
+
+[[terms]]
+word = "each"
+pos = "determiner"
+
+[[terms]]
+word = "every"
+pos = "determiner"
+
+[[terms]]
+word = "no"
+pos = "determiner"
+
+[[terms]]
+word = "some"
+pos = "determiner"
+
+[[terms]]
+word = "the"
+pos = "determiner"
+
+[[terms]]
+word = "this"
+pos = "determiner"
+
+[[terms]]
+word = "and"
+pos = "conjunction"
+
+[[terms]]
+word = "or"
+pos = "conjunction"

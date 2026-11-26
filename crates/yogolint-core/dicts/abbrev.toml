@@ -1,0 +1,308 @@
+# yogolint 標準辞書: 略語。
+# 許す略語は word に、展開すべき略語は正規の語の avoid に書く(cnt → count)。
+version = 1
+layer = "abbrev"
+
+[[terms]]
+word = "id"
+pos = "noun"
+
+[[terms]]
+word = "url"
+pos = "noun"
+
+[[terms]]
+word = "uri"
+pos = "noun"
+
+[[terms]]
+word = "json"
+pos = "noun"
+
+[[terms]]
+word = "xml"
+pos = "noun"
+
+[[terms]]
+word = "html"
+pos = "noun"
+
+[[terms]]
+word = "css"
+pos = "noun"
+
+[[terms]]
+word = "http"
+pos = "noun"
+
+[[terms]]
+word = "https"
+pos = "noun"
+
+[[terms]]
+word = "api"
+pos = "noun"
+
+[[terms]]
+word = "db"
+pos = "noun"
+
+[[terms]]
+word = "io"
+pos = "noun"
+
+[[terms]]
+word = "ui"
+pos = "noun"
+
+[[terms]]
+word = "cli"
+pos = "noun"
+
+[[terms]]
+word = "os"
+pos = "noun"
+
+[[terms]]
+word = "ip"
+pos = "noun"
+
+[[terms]]
+word = "tcp"
+pos = "noun"
+
+[[terms]]
+word = "udp"
+pos = "noun"
+
+[[terms]]
+word = "dns"
+pos = "noun"
+
+[[terms]]
+word = "sql"
+pos = "noun"
+
+[[terms]]
+word = "csv"
+pos = "noun"
+
+[[terms]]
+word = "toml"
+pos = "noun"
+
+[[terms]]
+word = "yaml"
+pos = "noun"
+
+[[terms]]
+word = "utf8"
+pos = "noun"
+
+[[terms]]
+word = "utf16"
+pos = "noun"
+
+[[terms]]
+word = "ascii"
+pos = "noun"
+
+[[terms]]
+word = "md5"
+pos = "noun"
+
+[[terms]]
+word = "sha1"
+pos = "noun"
+
+[[terms]]
+word = "sha256"
+pos = "noun"
+
+[[terms]]
+word = "i18n"
+pos = "noun"
+
+[[terms]]
+word = "l10n"
+pos = "noun"
+
+[[terms]]
+word = "uuid"
+pos = "noun"
+
+[[terms]]
+word = "ast"
+pos = "noun"
+
+[[terms]]
+word = "lsp"
+pos = "noun"
+
+[[terms]]
+word = "regex"
+pos = "noun"
+
+[[terms]]
+word = "env"
+pos = "noun"
+
+[[terms]]
+word = "ctx"
+pos = "noun"
+
+[[terms]]
+word = "args"
+pos = "noun"
+
+[[terms]]
+word = "src"
+pos = "noun"
+
+[[terms]]
+word = "dst"
+pos = "noun"
+
+[[terms]]
+word = "count"
+pos = "noun"
+avoid = ["cnt"]
+severity = "info"
+
+[[terms]]
+word = "number"
+pos = "noun"
+avoid = ["num", "nr"]
+severity = "info"
+
+[[terms]]
+word = "index"
+pos = "noun"
+avoid = ["idx"]
+severity = "info"
+
+[[terms]]
+word = "value"
+pos = "noun"
+avoid = ["val"]
+severity = "info"
+
+[[terms]]
+word = "message"
+pos = "noun"
+avoid = ["msg"]
+severity = "info"
+
+[[terms]]
+word = "error"
+pos = "noun"
+avoid = ["err"]
+severity = "info"
+
+[[terms]]
+word = "config"
+pos = "noun"
+avoid = ["cfg", "conf"]
+severity = "info"
+
+[[terms]]
+word = "button"
+pos = "noun"
+avoid = ["btn"]
+severity = "info"
+
+[[terms]]
+word = "password"
+pos = "noun"
+avoid = ["pwd", "passwd"]
+severity = "info"
+
+[[terms]]
+word = "user"
+pos = "noun"
+avoid = ["usr"]
+severity = "info"
+
+[[terms]]
+word = "length"
+pos = "noun"
+avoid = ["len"]
+severity = "info"
+
+[[terms]]
+word = "position"
+pos = "noun"
+avoid = ["pos"]
+severity = "info"
+
+[[terms]]
+word = "buffer"
+pos = "noun"
+avoid = ["buf"]
+severity = "info"
+
+[[terms]]
+word = "request"
+pos = "noun"
+avoid = ["req"]
+severity = "info"
+
+[[terms]]
+word = "response"
+pos = "noun"
+avoid = ["resp"]
+severity = "info"
+
+[[terms]]
+word = "previous"
+pos = "adjective"
+avoid = ["prev"]
+severity = "info"
+
+[[terms]]
+word = "current"
+pos = "adjective"
+avoid = ["curr", "cur"]
+severity = "info"
+
+[[terms]]
+word = "source"
+pos = "noun"
+avoid = ["srcs"]
+severity = "info"
+
+[[terms]]
+word = "document"
+pos = "noun"
+avoid = ["doc"]
+severity = "info"
+
+[[terms]]
+word = "directory"
+pos = "noun"
+avoid = ["dir"]
+severity = "info"
+
+[[terms]]
+word = "reference"
+pos = "noun"
+avoid = ["ref"]
+severity = "info"
+
+[[terms]]
+word = "attribute"
+pos = "noun"
+avoid = ["attr"]
+severity = "info"
+
+[[terms]]
+word = "parameter"
+pos = "noun"
+avoid = ["param", "params"]
+severity = "info"
+
+[[terms]]
+word = "argument"
+pos = "noun"
+avoid = ["arg"]
+severity = "info"
