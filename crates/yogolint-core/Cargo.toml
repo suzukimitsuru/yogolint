@@ -3,6 +3,7 @@ name = "yogolint-core"
 description = "Core of yogolint: extract definition names, split into words, check them against term dictionaries"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 

@@ -43,6 +43,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --locked
 
+  # 最低対応 Rust 版(Cargo.toml の rust-version)でビルドできるか確かめる
+  msrv:
+    name: msrv (1.90)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets --locked
+
   # yogolint 自身を検査する。エラーがあれば失敗し、件数をジョブの要約に残す
   self-check:
     name: yogolint self-check

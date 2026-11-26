@@ -3,6 +3,7 @@ name = "yogolint"
 description = "Lint the vocabulary of definition names against term dictionaries"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
