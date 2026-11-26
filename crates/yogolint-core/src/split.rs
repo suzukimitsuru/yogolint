@@ -83,7 +83,10 @@ fn match_digit_word(bytes: &[u8], index: usize, start: usize, end: usize, digit_
         if stop > end || !bytes[index..stop].eq_ignore_ascii_case(word) {
             return None;
         }
-        let ends_at_boundary = stop == end || bytes[stop].is_ascii_uppercase() || !bytes[stop].is_ascii_alphanumeric();
+        if stop == end {
+            return Some(word.len());
+        }
+        let ends_at_boundary = bytes[stop].is_ascii_uppercase() || !bytes[stop].is_ascii_alphanumeric();
         // 小文字だけの続き(utf8octets)は、語の最後が数字なら境界とみなす
         let digit_then_lower = bytes[stop - 1].is_ascii_digit() && bytes[stop].is_ascii_lowercase();
         (ends_at_boundary || digit_then_lower).then_some(word.len())
@@ -197,6 +200,9 @@ mod tests {
         assert_eq!(texts("r#type"), ["type"]);
         assert_eq!(texts("utf8octets"), ["utf8", "octets"]);
         assert_eq!(texts("butf8"), ["butf"]);
+        // 数字込みの語で識別子が終わる(ripgrep の検査で落ちた例)
+        assert_eq!(texts("decodeUtf8"), ["decode", "utf8"]);
+        assert_eq!(texts("Utf8"), ["utf8"]);
     }
 
     #[test]
