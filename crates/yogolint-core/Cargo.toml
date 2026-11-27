@@ -13,3 +13,6 @@ tree-sitter-rust.workspace = true
 serde.workspace = true
 toml.workspace = true
 regex.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

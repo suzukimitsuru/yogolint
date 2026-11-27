@@ -266,7 +266,7 @@ severity = "info"
 
 [[terms]]
 word = "to"
-pos = "prefix"
+pos = ["prefix", "preposition"]
 definition = "型や形式を変える(toXxx の形で使う)"
 avoid = ["convert", "transform"]
 severity = "info"
@@ -374,21 +374,21 @@ definition = "反映した設定や変更を元に戻す"
 pair = ["apply"]
 [[terms]]
 word = "from"
-pos = "prefix"
+pos = ["prefix", "preposition"]
 definition = "別の型から作る(fromXxx の形で使う。Rust の変換の命名規約)"
 
 [[terms]]
 word = "as"
-pos = "prefix"
+pos = ["prefix", "preposition"]
 definition = "安価に別の型として見る(asXxx の形で使う)"
 
 [[terms]]
 word = "into"
-pos = "prefix"
+pos = ["prefix", "preposition"]
 definition = "所有権を渡して別の型に変える(intoXxx の形で使う)"
 
 [[terms]]
 word = "with"
-pos = "prefix"
+pos = ["prefix", "preposition"]
 definition = "値を1つ変えた新しい値を返す(withXxx の形で使う)"
 

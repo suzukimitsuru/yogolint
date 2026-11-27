@@ -86,7 +86,7 @@ cspellと同じく「区切り文字 → 大小文字の境界 → 数字」の�
 
 - 前段の命名lintで書式は揃っているので、連結語は分割後の1つの塊の中にしか現れない。
 - 全層の辞書を使って動的計画法で分解する(語数が最小、1語は2文字以上)。分解できたら連結語とみなす。
-- 扱いは設定 `allowCompoundWords` で決める。既定は `false` で、「区切って書く」よう警告する。
+- 扱いは設定 `allow-compound-words` で決める。既定は `false` で、「区切って書く」よう警告する。
 - 分解できない塊は未知語とする。
 
 識別子の分割は研究上も完全な解法がなく、略語や固有名詞で誤ることがある([Spiral](https://www.theoj.org/joss-papers/joss.00653/10.21105.joss.00653.pdf))。誤分割は、その語を辞書に登録して直す運用とする。
@@ -172,20 +172,35 @@ orders
 
 判定順:
 
-1. deny・patternsに一致 → その項目の重大度。`position`・`kinds` の条件が合わなければ次へ進む。
-2. いずれかの層の `avoid` に一致 → 正規の語を提案し、その項目の重大度。ただし正規の語が動詞・述語接頭辞のもの(`new` → create など)は、function種別の先頭語のときだけ検査する。略語の展開(cnt → count)など名詞の同義語は位置を問わない(実装時に変更。下記「実装で設計書から変えた点」)。
+1. deny に一致 → 規則 `denied-word`、patterns に一致 → 規則 `denied-pattern`。重大度はその項目のもの。`position`・`kinds` の条件が合わなければ次へ進む。
+2. いずれかの層の `avoid` に一致 → 規則 `avoided-word`。正規の語を提案し、その項目の重大度。ただし正規の語が動詞・述語接頭辞のもの(`new` → create など)は、function種別の先頭語のときだけ検査する。略語の展開(cnt → count)など名詞の同義語は位置を問わない(実装時に変更。下記「実装で設計書から変えた点」)。
 3. 許可層(domain・verbs・nouns・abbrev)に一致 → 合格。
-4. 連結語として分解できた → `allowCompoundWords` に従う。
-5. どれにも当たらない → 未知語。重大度は設定 `unknownWord`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
+4. 連結語として分解できた → 設定 `allow-compound-words` に従う。許さなければ規則 `compound-word`(既定は warning)。
+5. どれにも当たらない → 未知語として規則 `unknown-word`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
 
-許可層に無く `minWordLength` 未満の語は、`allowSingleLetter` に無ければ連結語・未知語の判定の前に規則 `short`(warning)で報告する。
+許可層に無く `min-word-length` 未満の語は、`allow-single-letter` に無ければ連結語・未知語の判定の前に規則 `short-word`(既定は warning)で報告する。
 
-品詞位置の検査(最小構成は2規則のみ):
+`denied-word`・`denied-pattern`・`avoided-word` の重大度は辞書の項目ごとに決める。設定 `[rules]` で指定すると、全ての項目の重大度を上書きする(`none` で報告しない)。
 
-- function種別の**先頭語**は、`pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)。違反は warning。
-  - 言語の慣習で広げる。Rust では getter をフィールド名で書き(API Guidelines の C-GETTER)、コンストラクタを `new`・`empty` のように書くので、名詞・形容詞で始まる関数名と、先頭語の `new` を許す。
-  - テスト関数(Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数)は、名前を文で書くので品詞位置を検査しない。語彙の検査はする。
-- type・value・constant種別の**末尾語**は `pos: noun`。違反は info。
+品詞と語順の検査(5規則。重大度と認める品詞は設定 `[rules]` で変えられる):
+
+| 規則 | 検査すること | 既定の重大度 | 認める品詞(Rust の既定値) |
+| --- | --- | --- | --- |
+| `function-first-word-part-of-speech` | function種別の**先頭語**の品詞 | warning | verb / prefix / noun / adjective |
+| `type-last-word-part-of-speech` | type種別の**末尾語**の品詞 | info | noun |
+| `value-last-word-part-of-speech` | value種別の**末尾語**の品詞 | info | noun / preposition |
+| `constant-last-word-part-of-speech` | constant種別の**末尾語**の品詞 | info | noun |
+| `function-noun-verb-order` | function種別の**名詞＋動詞の語順** | warning | — |
+
+- 先頭語は `pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)にする。
+  - 言語の慣習で広げる。Rust では getter をフィールド名で書き(API Guidelines の C-GETTER)、コンストラクタを `new`・`empty` のように書くので、名詞・形容詞で始まる関数名と、先頭語の `new` を許す。動詞だけに戻すには、`function-first-word-part-of-speech` の `allow` を `["verb", "prefix"]` にする。
+- 末尾語は `pos: noun` にする。value種別は前置詞で終わってもよい(`started_at`、引数の `from` / `to`)。前置詞を許さないなら、`value-last-word-part-of-speech` の `allow` を `["noun"]` にする。
+- 名詞＋動詞の語順: 先頭語が名詞(動詞・述語接頭辞を兼ねない語)で、2語目以降に動詞(名詞を兼ねない語)があれば報告し、動詞を先頭へ移した名前を置換候補に出す(`user_delete` → `delete_user`)。名詞で始まる関数名を許した代わりに、日本語の語順(ユーザー削除)をそのまま英語にした名前を捕まえる。`to` の後ろの動詞は不定詞(`worker_to_notify`)なので数えない。
+- テスト関数(Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数)は、名前を文で書くので5規則とも検査しない。語彙の検査はする。
+- 品詞は verb / prefix / noun / adjective / adverb / preposition / determiner / conjunction のいずれか。知らない品詞名は設定の誤り(終了コード 2)とする。
+- 英字以外を含む識別子は規則 `non-ascii-identifier`(info)、構文エラー内の定義の件数は規則 `syntax-error`(info)で報告する。
+
+規則名は「何を報告するか」を kebab-case の名詞で表す。品詞は part-of-speech と略さずに書く(pos は標準辞書で position の略として避ける語にしているため)。
 
 | 重大度 | 意味 | 終了コード |
 | --- | --- | --- |
@@ -197,7 +212,7 @@ orders
 抑止の方法:
 
 - 行単位: `// yogolint-disable-next-line manager`(コメント記法は言語に合わせる)。
-- 設定の `ignoreWords`・`ignorePaths`。
+- 設定の `ignore-words`・`ignore-paths`。
 - 既存コード: `yogolint baseline` で現状の違反を記録し、以後は新しい違反だけを報告する。CIでは `--diff origin/main` で変更した定義だけを検査する。
 
 ## 設定・CLI・出力
@@ -205,20 +220,37 @@ orders
 設定は `yogolint.toml` 1つ、コマンドは5つ、出力は text・JSON・SARIF の3形式とする。
 
 ```toml
-# yogolint.toml
+# yogolint.toml(項目名は全て kebab-case)
 languages = ["rust"]
 include = ["src/**"]
 exclude = ["**/generated/**"]
 kinds = ["function", "type", "value", "constant"]
-builtinDictionaries = ["verbs", "nouns", "abbrev", "deny"]   # 埋め込み辞書のうち使う層
+builtin-dictionaries = ["verbs", "nouns", "abbrev", "deny"]   # 埋め込み辞書のうち使う層
 dictionaries = ["dicts/domain.toml"]
-unknownWord = "warning"
-allowCompoundWords = false
-minWordLength = 2
-allowSingleLetter = ["i", "j", "k", "n", "x", "y"]
-ignoreWords = []
+allow-compound-words = false
+min-word-length = 2
+allow-single-letter = ["i", "j", "k", "n", "x", "y"]
+ignore-words = []
 baseline = ".yogolint-baseline.json"
+
+# 規則ごとの設定。重大度(error / warning / info / none)だけなら1行で書く。none で報告しない
+[rules]
+unknown-word = "warning"
+function-noun-verb-order = "warning"
+
+# 品詞の規則は表にして、重大度(severity)と認める品詞(allow)を書ける。省いた項目は言語の慣習に従う
+[rules.function-first-word-part-of-speech]
+severity = "warning"
+allow = ["verb", "prefix", "noun", "adjective"]
+
+[rules.value-last-word-part-of-speech]
+severity = "info"
+allow = ["noun", "preposition"]
 ```
+
+- 判定の仕方を変えたいときは、コマンドの引数ではなく `yogolint.toml` の設定に書く。命名の方針はリポジトリで共有するもので、言語サーバー(VSCode)も同じファイルを読むため。引数は出力形式(`--format`)など実行ごとに変わるものに限る。
+- 項目名は、規則名と同じく kebab-case で揃える。Rust のツールの設定(`Cargo.toml` の `rust-version`、`clippy.toml` の `avoid-breaking-exported-api`)に合わせる。
+- `allow` を書けるのは品詞の規則だけで、他の規則に書けば設定の誤りとする。
 
 | コマンド | 働き |
 | --- | --- |
@@ -231,10 +263,10 @@ baseline = ".yogolint-baseline.json"
 text出力の例:
 
 ```text
-src/order/service.ts:12:10  warning  getOrderInfo    info: 曖昧語。何の情報かを名前にする      [deny]
-src/order/service.ts:30:7   warning  retrieveOrders  retrieve → get を使う                    [avoid]
-src/order/model.ts:5:14     warning  OrderMgr        mgr: 禁止語 manager の略記               [deny]
-src/order/model.ts:9:3      warning  shukkaDate      shukka: 未知語                           [unknown]
+src/order/service.ts:12:10  warning  getOrderInfo    info: 曖昧語。何の情報かを名前にする      [denied-word]
+src/order/service.ts:30:7   warning  retrieveOrders  retrieve → get を使う                    [avoided-word]
+src/order/model.ts:5:14     warning  OrderMgr        mgr: 禁止語 manager の略記               [denied-word]
+src/order/model.ts:9:3      warning  shukkaDate      shukka: 未知語                           [unknown-word]
 ```
 
 - SARIFはGitHubのコードスキャン画面にそのまま載る。
@@ -255,7 +287,7 @@ VSCodeのAPIを直接使わずLSPにするのは、同じサーバーをNeovim�
 | --- | --- |
 | 範囲 | range(識別子のうち該当する語の部分だけ) |
 | 重大度 error / warning / info | severity Error / Warning / Information(none は送らない) |
-| 規則 deny / avoid / unknown / compound / position / short / non-ascii / syntax | code |
+| 規則(denied-word、unknown-word など。「照合規則と重大度」の各規則) | code |
 | — | source は常に yogolint |
 | 置換候補 | メッセージに表示。クイックフィックス(codeAction)は将来の拡張 |
 
@@ -410,8 +442,8 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 
 運用上の注意:
 
-- 曖昧語でも設計パターン名として定着したもの(Factory, Repository, EventHandler)や、React の onClick のようなフレームワークの慣習名は、`ignoreWords` や `kinds` で外す。
-- 業務システムの「マスタ(商品マスタなど)」は master/slave と別義である。禁止は許可より優先するので、domain層に `master` を登録しても禁止は外れない。`ignoreWords` に入れるか、`dicts export` で書き出した deny 辞書から master の行を外す。
+- 曖昧語でも設計パターン名として定着したもの(Factory, Repository, EventHandler)や、React の onClick のようなフレームワークの慣習名は、`ignore-words` や `kinds` で外す。
+- 業務システムの「マスタ(商品マスタなど)」は master/slave と別義である。禁止は許可より優先するので、domain層に `master` を登録しても禁止は外れない。`ignore-words` に入れるか、`dicts export` で書き出した deny 辞書から master の行を外す。
 - 配慮語の置き換えには業界でも賛否がある。採用するかは組織の方針で決める。
 - ローマ字の語はこの表ではなく、未知語として検出する。
 
@@ -423,7 +455,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | --- | --- |
 | 範囲 | 第1段階: CLI の check・words・dicts export。第2段階: LSP(VSCode)、baseline、SARIF、build-dict |
 | 対象言語 | 第1段階は Rust のみ(yogolint 自身を検査できる)。第2段階で TypeScript・Python・Java |
-| 完成の判定 | 実在するコードベース1つに words を掛け、未知語の数と誤検出の内訳を記録する |
+| 完成の判定 | 実在するコードベース1つに words を掛け、未知語の数と誤検出の内訳を記録する。2026年11月27日に、分野の違う複数のリポジトリで誤検出率 20% 以下を第1段階を終える基準とした(暫定。今後の検討で変わりうる) |
 | 辞書・設定の形式 | TOML(保守が終わった serde\_yaml への依存を避ける) |
 | 標準辞書 | バイナリに埋め込む。`yogolint dicts export` でファイルに書き出せる(下記) |
 | tree-sitter | 本体と tree-sitter-rust の版を固定。同梱の tags.scm が使えるかを最初に確かめる |
@@ -439,7 +471,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 - `yogolint dicts export [--out dicts/] [--layer verbs,deny] [--force]` で、埋め込み辞書をTOMLファイルに書き出す。既定の出力先は `dicts/`。同名のファイルがあれば、`--force` が無い限り上書きしない。
 - 書き出したファイルの先頭に、yogolint の版と「標準辞書から書き出した」旨のコメントを入れる。版を上げたときの差分の確認に使う。
 - 同じ層のファイルを `dictionaries` に指定すると、その層の埋め込み辞書は使わない(結合せず置き換える)。書き出して編集し、指定する、という手順で標準辞書を作り変えられる。
-- 埋め込み辞書を使わない層は、`builtinDictionaries` から外す。
+- 埋め込み辞書を使わない層は、`builtin-dictionaries` から外す。
 
 ## 実装で設計書から変えた点
 
@@ -449,8 +481,8 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | --- | --- | --- | --- |
 | 避ける同義語の検査位置 | 位置を問わず報告する | 正規の語が動詞・述語接頭辞なら、function種別の先頭語のときだけ報告する。名詞の同義語・略語の展開は位置を問わない | `new_value` の形容詞 new、名詞の store・change・display などまで報告されるため |
 | 関数名の先頭に置ける語 | 動詞と is / has / can / should | to(付録Aの表どおり)と from / as / into / with を述語接頭辞(`pos = "prefix"`)として verbs 層に加えた | Rust の変換関数の命名慣習(from_str、as_bytes、into_iter、with_capacity) |
-| 禁止語と domain 層 | 「禁止は常に許可より優先」と、付録Bの「domain層に master を登録する」が食い違う | 禁止を優先する。付録Bの注意書きを `ignoreWords` か deny 辞書の行を外す運用に改めた | 照合規則の原則を優先した |
-| 規則の追加 | deny / avoid / unknown / compound / position | `short`(minWordLength 未満の語、warning)、`non-ascii`(英字以外を含む識別子、info)、`syntax`(構文エラー内の定義の件数、info)を加えた | 付録Bの(1文字)と、決定事項の「英字以外の識別子」「構文エラー」を報告する規則名が無かったため |
+| 禁止語と domain 層 | 「禁止は常に許可より優先」と、付録Bの「domain層に master を登録する」が食い違う | 禁止を優先する。付録Bの注意書きを `ignore-words` か deny 辞書の行を外す運用に改めた | 照合規則の原則を優先した |
+| 規則の追加 | deny / avoid / unknown / compound / position | `short`(minWordLength 未満の語、warning)、`non-ascii`(英字以外を含む識別子、info)、`syntax`(構文エラー内の定義の件数、info)を加えた。のちに `short-word`・`non-ascii-identifier`・`syntax-error` に改名した | 付録Bの(1文字)と、決定事項の「英字以外の識別子」「構文エラー」を報告する規則名が無かったため |
 | 禁止パターンの照合対象 | 語ごとの判定に含む | 識別子全体(前後の `_` を除き小文字にしたもの)に照合する。辞書に数字込みで登録した語(utf8 など)だけの識別子は除く | 数字は分割で捨てられ、語単位では data1 のような連番を検出できないため |
 | 標準の verbs 辞書 | 付録Aの44語 | 対語(unlock・hide・detach・unregister・unsubscribe・pop・receive・revert)を加えた。名詞としても使う語(start・stop・format・set など)は `pos = ["verb", "noun"]` とした | 対語が未知語になり、値の名前の末尾で品詞位置の誤検出が出るため |
 | 辞書の品詞 | `pos` は1つ | 文字列か配列のどちらでもよい | 動詞と名詞を兼ねる語のため |
@@ -459,10 +491,27 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | 終了コード | エラー1件以上で1 | 設定・辞書の誤りは2 | 検査結果と実行失敗を区別するため |
 | trait 実装の扱い | 定義箇所を検査する | trait 実装の中のメソッド・関連型・関連定数を抽出しない | 名前は trait 側で決まる参照で、完成判定で誤検出の最大要因(1,320 件)だったため |
 | 原形化と禁止・避ける同義語 | 原形化した形で照合する | 語そのものが許可層にあれば、原形化した形で禁止語・避ける同義語を引かない | args → arg(avoid)、string → str(deny)の誤検出(716 件)のため |
-| 関数名の先頭語(言語の慣習) | 動詞か述語接頭辞 | 言語ごとに広げる。Rust は名詞・形容詞と先頭語の new を許す | Rust の getter・コンストラクタの慣習(誤検出 361 件)のため。これで自リポジトリの `ignoreWords = ["new"]` も不要になった |
+| 関数名の先頭語(言語の慣習) | 動詞か述語接頭辞 | 言語ごとに広げる。Rust は名詞・形容詞と先頭語の new を許す | Rust の getter・コンストラクタの慣習(誤検出 361 件)のため。これで自リポジトリの `ignore-words = ["new"]` も不要になった |
 | テスト関数 | — | 品詞位置を検査しない | テスト名は文で書くため(誤検出 189 件) |
+| 語順の規則 | — | 規則 `function-noun-verb-order` を加えた(関数名が名詞で始まり、後ろに動詞がある) | 名詞で始まる関数名を許すと、`user_delete` のような日本語の語順の名前を見逃すため(2026年11月27日に決定。今後の検討で変わりうる) |
+| 値の名前の末尾語 | 名詞 | value種別は前置詞で終わってもよい。to / from / as / into / with の品詞に preposition を加えた | `started_at`、引数の `from` / `to` の慣用名(誤検出 57 件) |
+| 規則名 | deny / avoid / unknown / compound / position | 「何を報告するか」を kebab-case の名詞で表す名前に改めた。deny は禁止語(`denied-word`)と禁止パターン(`denied-pattern`)に、position は関数名の先頭語と、型・値・定数の末尾語の4規則に分けた(下の対応表) | 動詞(deny・avoid)や形容詞(unknown・short)だけでは報告の中身を表さず、品詞の規則名に「品詞」が入っていなかったため。分けた規則は別々に重大度を設定できる(2026年11月27日) |
+| 規則の設定 | `unknownWord` で未知語の重大度だけを変えられる | `[rules]` で規則ごとの重大度を、品詞の規則では認める品詞(`allow`)も変えられる | 言語の慣習で緩めた規則(名詞で始まる関数名、末尾の前置詞)を、リポジトリの方針で厳しくも緩くもできるようにするため(2026年11月27日) |
+| 設定の項目名 | camelCase(`allowCompoundWords`。cspell の設定名に合わせていた) | kebab-case(`allow-compound-words`) | `[rules]` の規則名(kebab-case)と1つのファイルで混ざるため。`yogolint.toml` は cspell に読まれないので、cspell に合わせる利点が無い。未公開のうちに書き方を改めた(2026年11月27日) |
 
 ## 第1段階の完成判定
+
+この節と次の節の規則名は、計測したときの名前(deny・avoid・unknown・compound・position・short)で記す。今の名前との対応:
+
+| 計測時 | 今 |
+| --- | --- |
+| deny | denied-word、denied-pattern(連番など) |
+| avoid | avoided-word |
+| unknown | unknown-word |
+| compound | compound-word |
+| position | function-first-word-part-of-speech、type- / value- / constant-last-word-part-of-speech |
+| short | short-word |
+| word-order | function-noun-verb-order |
 
 2026年11月26日に実施。「実在するコードベース1つに words を掛け、未知語の数と誤検出の内訳を記録する」の結果を記す。
 
@@ -528,7 +577,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | 2(済) | 原形化の修正。語そのものが許可層にあれば、原形化した形で avoid・deny を引かない | 716 |
 | 3(済) | 言語ごとの品詞規則。Rust では名詞で始まる関数名(getter・コンストラクタ)と `new` を許し、テスト関数は品詞位置の検査から外す | 550 |
 | 4 | 標準辞書を広げる。一般的な英単語、技術用語(stdin, glob, symlink, unicode)、数字込みの語(pcre2, sse2, avx2, u64, utf16)を足す。一般の英単語は連結語として分解しない | 4,136 の大部分 |
-| 5 | 前置詞で終わる慣用名(_at、from / to)の扱いと、1文字の冠詞 a を short にすることを決める | 63 |
+| 5 | 前置詞で終わる慣用名(_at、from / to)の扱いと、1文字の冠詞 a を short にすることを決める。前置詞は value の名前の末尾で許すことにした(2026年11月27日に実施) | 63 |
 
 1〜3 は規則と抽出の直しで済み、合わせて約 2,600 件(誤検出の 38%)が減る見込み(2026年11月27日に実施。結果は次の「改善1〜3の後の再計測」)。4 は辞書の量の問題で、どこまで標準辞書に持たせ、どこからドメイン辞書に任せるかを決める必要がある。flag のような文脈で意味が変わる禁止語(37 件)は、ドメイン辞書で禁止を外せるようにするか(付録B の master と同じ問題)と合わせて決める。
 
@@ -564,6 +613,72 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 
 - 改善前の分類では、trait 実装の関連型(`type Err`・`type Item`)の報告を「正しい検出」に数えていた(約 10 件)。改善後はこれらを抽出しないので、正しい検出が 2,161 件から 2,154 件に減った。
 - 誤検出の 95%(4,050 件)は辞書不足になった。残りの改善は辞書の方針(改善4)が中心になる。
+
+### 分野の違う複数のリポジトリでの計測
+
+2026年11月27日、ripgrep だけでは偏りがあるため、分野の違う3つのリポジトリを加えて計測した。語順の規則と、値の名前の末尾の前置詞の許可を入れた版で測った。第1段階を終える基準は、**誤検出率 20% 以下**とする(暫定)。
+
+| リポジトリ | 分野 | 版(コミット) | `.rs` ファイル | 行 | 所要時間 |
+| --- | --- | --- | --- | --- | --- |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | CLI の検索ツール | 16.0.0(669cb4c) | 105 | 58,485 | 0.56 秒 |
+| [tokio](https://github.com/tokio-rs/tokio) | 非同期実行基盤・ネットワーク | tokio-1.54.1(b53b2001) | 811 | 188,485 | 0.99 秒 |
+| [alacritty](https://github.com/alacritty/alacritty) | GUI の端末エミュレータ | v0.17.0(94e7c88) | 88 | 33,696 | 0.18 秒 |
+| [image](https://github.com/image-rs/image) | 画像の符号化・復号 | v0.25.10(76e57184) | 114 | 39,544 | 0.22 秒 |
+
+条件は第1段階の完成判定と同じ(既定の設定、標準辞書の4層だけ、release ビルド、Apple Silicon の MacBook)。
+
+| 区分 | ripgrep | tokio | alacritty | image | 合計 |
+| --- | --- | --- | --- | --- | --- |
+| 報告 | 6,322 | 26,047 | 5,097 | 7,315 | 44,781 |
+| 正しい検出 | 2,114 | 9,630 | 1,085 | 2,562 | 15,391 |
+| 辞書不足 | 4,070 | 15,913 | 3,847 | 4,631 | 28,461 |
+| 規則の誤り | 58 | 331 | 58 | 90 | 537 |
+| 分割誤り | 80 | 173 | 107 | 32 | 392 |
+| 抽出誤り | 0 | 0 | 0 | 0 | 0 |
+| **誤検出率** | **67%** | **63%** | **79%** | **65%** | **66%** |
+| 辞書不足を除いた誤検出率 | 6% | 5% | 13% | 5% | — |
+
+未知語:
+
+| リポジトリ | 未知語 | 出現 |
+| --- | --- | --- |
+| ripgrep | 735 語 | 4,980 回 |
+| tokio | 1,376 語 | 19,913 回 |
+| alacritty | 794 語 | 4,194 回 |
+| image | 910 語 | 5,424 回 |
+| 4つを合わせて | 2,788 語 | 34,511 回 |
+
+| 出るリポジトリの数 | 語数 | 出現 | 例 |
+| --- | --- | --- | --- |
+| 4つ全て | 67 | 4,712 | inner, try, panic, expected, block, reader, writer, after, before, decoder, now, zero |
+| 3つ | 182 | 6,534 | |
+| 2つ | 462 | 9,926 | |
+| 1つだけ | 2,077 | 13,339 | |
+
+規則の誤りの内訳(4つの合計):
+
+| 原因 | 件数 | 主な出どころ |
+| --- | --- | --- |
+| 1文字の a が冠詞として許可され short にならない | 209 | tokio 131、image 65 |
+| 文脈で意味が変わる禁止語(CLI・OS のフラグの flag / flags、端末の master、UI の bar、tokio の Handle) | 138 | 全て |
+| Rust 標準の用語が避ける同義語に当たる(drop → remove、clone → copy、acquire → lock、release → dispose、seek、store) | 140 | tokio 129 |
+| 副詞・前置詞で始まる getter・コンビネータ名(in_bounds、no_limits、and_then、for_each) | 37 | 全て |
+| 連番パターンが意味のある数字に当たる(SelectTab1〜9、regression_106) | 12 | alacritty 9 |
+| 原形化で lens → len が avoid に当たる | 1 | ripgrep |
+
+語順の規則(`function-noun-verb-order`。計測時の名前は `word-order`)の報告は tokio の 6 件だけで、全て名詞＋動詞の語順だった(`task_remove`、`task_push_back`、`service_write` など)。うち `env_remove`・`env_clear` は標準ライブラリの `std::process::Command` に名前を合わせたもの。計測中に、`to` の後ろの動詞(`worker_to_notify`)を報告する誤りが見つかったので直した。
+
+分類の方法:
+
+- 第1段階の完成判定と同じ基準で、スクリプトで分けた。未知語は、目視で選んだ略語の一覧に当たれば正しい検出、それ以外は辞書不足とした。英単語かどうかは macOS の英語辞書で判定した。
+- 値の名前の末尾が、同じリポジトリの型名の最後の語と同じなら(tokio の `notify: Notify`、`ready: Ready`)、その分野の名詞として使っているとみなし、辞書不足に数えた。ripgrep の値は再分類したので、改善1〜3の後の再計測の値と少し違う。
+- 避ける同義語・1文字の名前・連番は、設計書の方針どおりなので正しい検出に数えた。
+
+判定:
+
+- 4つとも**誤検出率は 63〜79% で、基準の 20% に届かない。** 誤検出の 97% は辞書不足で、辞書不足を除くと 5〜13% になる。基準を満たせるかは、標準辞書を広げる改善4で決まる。
+- 2つ以上のリポジトリに出る未知語は 711 語で、未知語の出現の 61% に当たる。標準辞書に足す語の候補になる。1つのリポジトリだけに出る 2,077 語(出現の 39%)は、ドメイン辞書に任せる候補になる。
+- alacritty は、辞書不足を除いても 13% と高い。英単語を連結語として分解する誤り(viewport、inline、underline)が多いため。
 
 ## 未決事項と今後の拡張
 

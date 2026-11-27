@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::dict::{Dictionary, Position};
-use crate::extract::{Definition, Extractor, NamingConvention};
+use crate::extract::{Definition, Extractor};
 use crate::split::{Word, decompose_compound, split_identifier, trim_identifier};
 use crate::{Config, Finding, Kind, Language, Location, Rule, Severity};
 
@@ -65,17 +65,18 @@ impl Linter {
                 identifier: String::new(),
                 kind: None,
                 word: String::new(),
-                rule: Rule::Syntax,
-                severity: Severity::Info,
+                rule: Rule::SyntaxError,
+                severity: self.severity(Rule::SyntaxError),
                 message: format!("構文エラー内の定義 {} 件を検査しなかった", extraction.skipped_in_error),
                 suggestions: vec![],
             });
         }
+        let naming = self.naming(language);
         for definition in &extraction.definitions {
             if !self.config.kinds.contains(&definition.kind) {
                 continue;
             }
-            for finding in self.check_definition(definition, language.naming()) {
+            for finding in self.check_definition(definition, &naming) {
                 let start_byte = definition.start_byte + finding.start;
                 let end_byte = definition.start_byte + finding.end;
                 let suppressed = disabled.get(&definition.row).is_some_and(|words| {
@@ -99,8 +100,29 @@ impl Linter {
         Ok(findings)
     }
 
+    /// 規則の重大度(設定か、規則の既定)。辞書の項目ごとに重大度を持つ規則には使わない
+    fn severity(&self, rule: Rule) -> Severity {
+        self.config.rules.severity(rule, Severity::Warning)
+    }
+
+    /// 言語の命名の慣習を、設定 `[rules]` の `allow` で上書きしたもの
+    fn naming(&self, language: Language) -> Naming {
+        let convention = language.naming();
+        let resolve = |rule: Rule, default: &[&str]| match self.config.rules.allowed_parts_of_speech(rule) {
+            Some(allowed) => allowed.to_vec(),
+            None => default.iter().map(|pos| pos.to_string()).collect(),
+        };
+        Naming {
+            function_head: resolve(Rule::FunctionFirstWordPartOfSpeech, convention.function_head_pos),
+            function_head_words: convention.function_head_words,
+            type_ending: resolve(Rule::TypeLastWordPartOfSpeech, convention.type_ending_pos),
+            value_ending: resolve(Rule::ValueLastWordPartOfSpeech, convention.value_ending_pos),
+            constant_ending: resolve(Rule::ConstantLastWordPartOfSpeech, convention.constant_ending_pos),
+        }
+    }
+
     /// 識別子1つを検査する(ファイルに依らない)。範囲は識別子の中のバイト位置。
-    fn check_definition(&self, definition: &Definition, naming: NamingConvention) -> Vec<WordFinding> {
+    fn check_definition(&self, definition: &Definition, naming: &Naming) -> Vec<WordFinding> {
         let identifier = definition.name.as_str();
         let kind = definition.kind;
         let (trim_start, trim_end) = trim_identifier(identifier);
@@ -116,8 +138,8 @@ impl Linter {
         };
         if !identifier.is_ascii() {
             return vec![whole(
-                Rule::NonAscii,
-                Severity::Info,
+                Rule::NonAsciiIdentifier,
+                self.severity(Rule::NonAsciiIdentifier),
                 "英字以外を含む識別子は検査しない".into(),
                 vec![],
             )];
@@ -138,18 +160,24 @@ impl Linter {
                 .clone()
                 .unwrap_or_else(|| format!("禁止パターン {}", pattern.regex));
             let suggestions = pattern.suggest.iter().cloned().collect();
-            return vec![whole(Rule::Deny, pattern.severity, reason, suggestions)];
+            let severity = self.config.rules.severity(Rule::DeniedPattern, pattern.severity);
+            return vec![whole(Rule::DeniedPattern, severity, reason, suggestions)];
         }
 
         let words = split_identifier(identifier, &self.dictionary.digit_words);
         let last = words.len().saturating_sub(1);
+        let position_of = |index: usize| WordPosition {
+            first: index == 0,
+            last: index == last,
+        };
+        let verdicts: Vec<Verdict> = words
+            .iter()
+            .enumerate()
+            .map(|(index, word)| self.judge_word(&word.text, kind, position_of(index), naming))
+            .collect();
         let mut findings = Vec::new();
-        for (index, word) in words.iter().enumerate() {
-            let position = WordPosition {
-                first: index == 0,
-                last: index == last,
-            };
-            let verdict = self.judge_word(&word.text, kind, position, naming);
+        for ((index, word), verdict) in words.iter().enumerate().zip(verdicts.iter().cloned()) {
+            let position = position_of(index);
             match verdict {
                 Verdict::Report {
                     rule,
@@ -168,6 +196,17 @@ impl Linter {
                 }
             }
         }
+        if kind == Kind::Function
+            && !definition.is_test
+            && let Some(finding) = check_noun_verb_order(
+                identifier,
+                &words,
+                &verdicts,
+                self.severity(Rule::FunctionNounVerbOrder),
+            )
+        {
+            findings.push(finding);
+        }
         findings
     }
 
@@ -179,7 +218,7 @@ impl Linter {
     }
 
     /// 1語を判定する。
-    fn judge_word(&self, text: &str, kind: Kind, position: WordPosition, naming: NamingConvention) -> Verdict {
+    fn judge_word(&self, text: &str, kind: Kind, position: WordPosition, naming: &Naming) -> Verdict {
         if self.is_ignored(text) {
             return Verdict::Allowed { pos: vec![] };
         }
@@ -213,8 +252,8 @@ impl Linter {
                         format!("{text}: 禁止語 {} の異表記。{reason}", denied.word)
                     };
                     return Verdict::Report {
-                        rule: Rule::Deny,
-                        severity: denied.severity,
+                        rule: Rule::DeniedWord,
+                        severity: self.config.rules.severity(Rule::DeniedWord, denied.severity),
                         message,
                         suggestions: denied.suggest.iter().cloned().collect(),
                     };
@@ -228,8 +267,8 @@ impl Linter {
                 let verb_like = avoid.canonical_pos.iter().any(|pos| pos == "verb" || pos == "prefix");
                 if !verb_like || (kind == Kind::Function && position.first) {
                     return Verdict::Report {
-                        rule: Rule::Avoid,
-                        severity: avoid.severity,
+                        rule: Rule::AvoidedWord,
+                        severity: self.config.rules.severity(Rule::AvoidedWord, avoid.severity),
                         message: format!("{text} → {} を使う", avoid.canonical),
                         suggestions: vec![avoid.canonical.clone()],
                     };
@@ -252,8 +291,8 @@ impl Linter {
                 return Verdict::Allowed { pos: vec![] };
             }
             return Verdict::Report {
-                rule: Rule::Short,
-                severity: Severity::Warning,
+                rule: Rule::ShortWord,
+                severity: self.severity(Rule::ShortWord),
                 message: format!("{text}: 短すぎて意図を表さない"),
                 suggestions: vec![],
             };
@@ -277,8 +316,8 @@ impl Linter {
             }
             let joined = parts.join("_");
             return Verdict::Report {
-                rule: Rule::Compound,
-                severity: Severity::Warning,
+                rule: Rule::CompoundWord,
+                severity: self.severity(Rule::CompoundWord),
                 message: format!("{text}: 連結語。区切って書く({})", parts.join(" / ")),
                 suggestions: vec![joined],
             };
@@ -286,14 +325,15 @@ impl Linter {
 
         // 5. 未知語
         Verdict::Report {
-            rule: Rule::Unknown,
-            severity: self.config.unknown_word,
+            rule: Rule::UnknownWord,
+            severity: self.severity(Rule::UnknownWord),
             message: format!("{text}: 未知語"),
             suggestions: vec![],
         }
     }
 
-    /// 品詞位置の検査(関数の先頭語は動詞か述語接頭辞、型・値・定数の末尾語は名詞)。
+    /// 品詞の検査。関数名の先頭語(規則 function-first-word-part-of-speech)と、
+    /// 型・値・定数の名前の末尾語(規則 type- / value- / constant-last-word-part-of-speech)。
     fn check_part_of_speech(
         &self,
         word: &Word,
@@ -301,42 +341,63 @@ impl Linter {
         kind: Kind,
         position: WordPosition,
         words: &[Word],
-        naming: NamingConvention,
+        naming: &Naming,
     ) -> Option<WordFinding> {
-        // 品詞が分からない語(ignoreWords・1文字の許可語)は検査しない
+        // 品詞が分からない語(ignore-words・1文字の許可語)は検査しない
         if pos.is_empty() {
             return None;
         }
-        match kind {
-            Kind::Function if position.first => {
-                let ok = pos.iter().any(|p| naming.function_head_pos.contains(&p.as_str()));
-                (!ok).then(|| {
-                    WordFinding::new(
-                        word,
-                        Rule::Position,
-                        Severity::Warning,
-                        format!("{}: 関数名の先頭は{}にする", word.text, naming.function_head_hint),
-                        vec![],
-                    )
-                })
-            }
-            Kind::Type | Kind::Value | Kind::Constant if position.last => {
-                let ok = pos.iter().any(|p| p == "noun");
-                // 1語だけの名前の真偽値(enabled など)も報告するが、重大度は info
-                (!ok).then(|| {
-                    let what = if words.len() == 1 { "名前" } else { "名前の末尾" };
-                    WordFinding::new(
-                        word,
-                        Rule::Position,
-                        Severity::Info,
-                        format!("{}: {what}は名詞にする", word.text),
-                        vec![],
-                    )
-                })
-            }
-            _ => None,
+        let place = if words.len() == 1 { "名前" } else { "名前の末尾" };
+        let (rule, allowed, place) = match kind {
+            Kind::Function if position.first => (
+                Rule::FunctionFirstWordPartOfSpeech,
+                &naming.function_head,
+                "関数名の先頭",
+            ),
+            Kind::Type if position.last => (Rule::TypeLastWordPartOfSpeech, &naming.type_ending, place),
+            Kind::Value if position.last => (Rule::ValueLastWordPartOfSpeech, &naming.value_ending, place),
+            Kind::Constant if position.last => (Rule::ConstantLastWordPartOfSpeech, &naming.constant_ending, place),
+            _ => return None,
+        };
+        let severity = self.severity(rule);
+        if pos.iter().any(|p| allowed.contains(p)) {
+            return None;
         }
+        Some(WordFinding::new(
+            word,
+            rule,
+            severity,
+            format!("{}: {place}は{}にする", word.text, pos_labels(allowed)),
+            vec![],
+        ))
     }
+}
+
+/// 品詞の規則が認める品詞(言語の慣習を設定で上書きしたもの)
+struct Naming {
+    function_head: Vec<String>,
+    function_head_words: &'static [&'static str],
+    type_ending: Vec<String>,
+    value_ending: Vec<String>,
+    constant_ending: Vec<String>,
+}
+
+/// 品詞の一覧を報告の文にする(動詞・名詞)
+fn pos_labels(pos: &[String]) -> String {
+    pos.iter()
+        .map(|p| match p.as_str() {
+            "verb" => "動詞",
+            "prefix" => "述語接頭辞(is / has / to / from など)",
+            "noun" => "名詞",
+            "adjective" => "形容詞",
+            "adverb" => "副詞",
+            "preposition" => "前置詞",
+            "determiner" => "限定詞",
+            "conjunction" => "接続詞",
+            other => other,
+        })
+        .collect::<Vec<_>>()
+        .join("・")
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -371,6 +432,68 @@ impl WordFinding {
             suggestions,
         }
     }
+}
+
+/// 語順の検査(規則 function-noun-verb-order)。関数名が名詞で始まり、2語目以降に動詞があれば報告する
+/// (user_delete → delete_user)。先頭語が動詞・述語接頭辞を兼ねる語、後ろの語が名詞を兼ねる語
+/// (start・cache など)は報告しない。
+fn check_noun_verb_order(
+    identifier: &str,
+    words: &[Word],
+    verdicts: &[Verdict],
+    severity: Severity,
+) -> Option<WordFinding> {
+    let pos_of = |index: usize| match &verdicts[index] {
+        Verdict::Allowed { pos } => Some(pos.as_slice()),
+        Verdict::Report { .. } => None,
+    };
+    let head = pos_of(0)?;
+    let noun_head = head.iter().any(|p| p == "noun") && !head.iter().any(|p| p == "verb" || p == "prefix");
+    if !noun_head {
+        return None;
+    }
+    // to の後ろの動詞は不定詞(worker_to_notify)なので数えない
+    let verb_index = (1..words.len()).find(|&index| {
+        words[index - 1].text != "to"
+            && pos_of(index).is_some_and(|pos| !pos.is_empty() && pos.iter().all(|p| p == "verb"))
+    })?;
+    let verb = &words[verb_index];
+    let reordered: Vec<&str> = std::iter::once(verb.text.as_str())
+        .chain(
+            words
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != verb_index)
+                .map(|(_, word)| word.text.as_str()),
+        )
+        .collect();
+    let suggestion = if identifier.contains('_') || !identifier.bytes().any(|b| b.is_ascii_uppercase()) {
+        reordered.join("_")
+    } else {
+        // camelCase は先頭語を小文字、以降を頭文字だけ大文字にする
+        reordered
+            .iter()
+            .enumerate()
+            .map(|(index, word)| {
+                if index == 0 {
+                    word.to_string()
+                } else {
+                    let mut chars = word.chars();
+                    chars
+                        .next()
+                        .map(|first| first.to_ascii_uppercase().to_string() + chars.as_str())
+                        .unwrap_or_default()
+                }
+            })
+            .collect()
+    };
+    Some(WordFinding::new(
+        verb,
+        Rule::FunctionNounVerbOrder,
+        severity,
+        format!("{}: 動詞を関数名の先頭に置く({suggestion})", verb.text),
+        vec![suggestion],
+    ))
 }
 
 /// 原形の候補。語そのもの、forms に登録した原形、規則変化(-s / -es / -ies / -ed / -ing)を外した形の順。
@@ -498,19 +621,19 @@ forms = ["orders"]
     fn reports_spec_examples() {
         assert_eq!(
             check("fn get_order_info() {}"),
-            vec![("info".into(), Rule::Deny, Severity::Warning)]
+            vec![("info".into(), Rule::DeniedWord, Severity::Warning)]
         );
         assert_eq!(
             check("fn retrieve_orders() {}"),
-            vec![("retrieve".into(), Rule::Avoid, Severity::Warning)]
+            vec![("retrieve".into(), Rule::AvoidedWord, Severity::Warning)]
         );
         assert_eq!(
             check("struct OrderMgr;"),
-            vec![("mgr".into(), Rule::Deny, Severity::Warning)]
+            vec![("mgr".into(), Rule::DeniedWord, Severity::Warning)]
         );
         assert_eq!(
             check("struct ShukkaDate;"),
-            vec![("shukka".into(), Rule::Unknown, Severity::Warning)]
+            vec![("shukka".into(), Rule::UnknownWord, Severity::Warning)]
         );
     }
 
@@ -519,12 +642,12 @@ forms = ["orders"]
         // manager は型名の末尾だけ
         assert_eq!(
             check("struct OrderManager;"),
-            vec![("manager".into(), Rule::Deny, Severity::Warning)]
+            vec![("manager".into(), Rule::DeniedWord, Severity::Warning)]
         );
         assert_eq!(
             check("fn get_manager_order() {}")
                 .iter()
-                .filter(|f| f.1 == Rule::Deny)
+                .filter(|f| f.1 == Rule::DeniedWord)
                 .count(),
             0
         );
@@ -534,16 +657,16 @@ forms = ["orders"]
     fn patterns_compound_and_short_words() {
         assert_eq!(
             check("fn load() { let order1 = 0; }"),
-            vec![("order1".into(), Rule::Deny, Severity::Error)]
+            vec![("order1".into(), Rule::DeniedPattern, Severity::Error)]
         );
         assert_eq!(
             check("fn savefile() {}"),
-            vec![("savefile".into(), Rule::Compound, Severity::Warning)]
+            vec![("savefile".into(), Rule::CompoundWord, Severity::Warning)]
         );
         assert_eq!(check("fn load() { let i = 0; }"), vec![]);
         assert_eq!(
             check("fn load() { let q = 0; }"),
-            vec![("q".into(), Rule::Short, Severity::Warning)]
+            vec![("q".into(), Rule::ShortWord, Severity::Warning)]
         );
     }
 
@@ -553,12 +676,12 @@ forms = ["orders"]
         assert_eq!(check("fn load() { let new_order = 0; }"), vec![]);
         assert_eq!(
             check("fn make_order() {}"),
-            vec![("make".into(), Rule::Avoid, Severity::Warning)]
+            vec![("make".into(), Rule::AvoidedWord, Severity::Warning)]
         );
         // 略語の展開は位置を問わない
         assert_eq!(
             check("fn load() { let order_cnt = 0; }"),
-            vec![("cnt".into(), Rule::Avoid, Severity::Info)]
+            vec![("cnt".into(), Rule::AvoidedWord, Severity::Info)]
         );
     }
 
@@ -566,11 +689,11 @@ forms = ["orders"]
     fn part_of_speech_rules() {
         assert_eq!(
             check("fn only_price() {}"),
-            vec![("only".into(), Rule::Position, Severity::Warning)]
+            vec![("only".into(), Rule::FunctionFirstWordPartOfSpeech, Severity::Warning)]
         );
         assert_eq!(
             check("struct OrderEmpty;"),
-            vec![("empty".into(), Rule::Position, Severity::Info)]
+            vec![("empty".into(), Rule::TypeLastWordPartOfSpeech, Severity::Info)]
         );
     }
 
@@ -586,7 +709,7 @@ forms = ["orders"]
         // 語そのものが許可層に無ければ、原形化した形で引く
         assert_eq!(
             check("fn load() { let order_cnts = 0; }"),
-            vec![("cnts".into(), Rule::Avoid, Severity::Info)]
+            vec![("cnts".into(), Rule::AvoidedWord, Severity::Info)]
         );
     }
 
@@ -600,12 +723,94 @@ forms = ["orders"]
     }
 
     #[test]
+    fn reports_noun_then_verb_order() {
+        let findings = linter(Config::default())
+            .check_source(Language::Rust, "fn user_delete(id: u64) {}\nfn configLoad() {}")
+            .unwrap();
+        let order: Vec<(String, Vec<String>)> = findings
+            .into_iter()
+            .filter(|finding| finding.rule == Rule::FunctionNounVerbOrder)
+            .map(|finding| (finding.word, finding.suggestions))
+            .collect();
+        assert_eq!(
+            order,
+            [
+                ("delete".to_string(), vec!["delete_user".to_string()]),
+                ("load".to_string(), vec!["loadConfig".to_string()])
+            ]
+        );
+        // 動詞で始まる名前、名詞を兼ねる語(start)、テスト関数は報告しない
+        assert_eq!(check("fn delete_user() {}"), vec![]);
+        assert_eq!(check("impl Order { fn line_start(&self) {} }"), vec![]);
+        assert_eq!(check("#[test]\nfn user_delete() {}"), vec![]);
+        // to の後ろは不定詞
+        assert_eq!(check("fn order_to_load() {}"), vec![]);
+    }
+
+    #[test]
+    fn value_names_may_end_with_prepositions() {
+        assert_eq!(check("fn load(from: u8, to: u8) { let started_at = 0; }"), vec![]);
+        // 型名は名詞で終える
+        assert_eq!(
+            check("struct OrderAt;"),
+            vec![("at".into(), Rule::TypeLastWordPartOfSpeech, Severity::Info)]
+        );
+    }
+
+    #[test]
+    fn rule_severities_and_parts_of_speech_are_configurable() {
+        let config = Config {
+            rules: Config::from_toml(
+                r#"
+[rules]
+function-noun-verb-order = "none"
+unknown-word = "error"
+[rules.function-first-word-part-of-speech]
+allow = ["verb", "prefix"]
+[rules.value-last-word-part-of-speech]
+allow = ["noun"]
+"#,
+            )
+            .unwrap()
+            .rules,
+            ..Config::default()
+        };
+        let findings: Vec<(String, Rule, Severity)> = linter(config)
+            .check_source(
+                Language::Rust,
+                "fn user_delete() {}\nimpl Order { fn price(&self) {} }\nfn load(from: u8) { let shukka = 0; }",
+            )
+            .unwrap()
+            .into_iter()
+            .map(|finding| (finding.word, finding.rule, finding.severity))
+            .collect();
+        assert_eq!(
+            findings,
+            [
+                (
+                    "user".to_string(),
+                    Rule::FunctionFirstWordPartOfSpeech,
+                    Severity::Warning
+                ),
+                ("delete".to_string(), Rule::FunctionNounVerbOrder, Severity::None),
+                (
+                    "price".to_string(),
+                    Rule::FunctionFirstWordPartOfSpeech,
+                    Severity::Warning
+                ),
+                ("from".to_string(), Rule::ValueLastWordPartOfSpeech, Severity::Info),
+                ("shukka".to_string(), Rule::UnknownWord, Severity::Error),
+            ]
+        );
+    }
+
+    #[test]
     fn test_functions_skip_part_of_speech() {
         assert_eq!(check("#[test]\nfn only_price() {}"), vec![]);
         // 未知語は検査する
         assert_eq!(
             check("#[test]\nfn load_shukka() {}"),
-            vec![("shukka".into(), Rule::Unknown, Severity::Warning)]
+            vec![("shukka".into(), Rule::UnknownWord, Severity::Warning)]
         );
     }
 
@@ -635,7 +840,7 @@ forms = ["orders"]
     fn non_ascii_identifiers_are_info() {
         assert_eq!(
             check("fn load() { let 注文 = 0; }"),
-            vec![("注文".into(), Rule::NonAscii, Severity::Info)]
+            vec![("注文".into(), Rule::NonAsciiIdentifier, Severity::Info)]
         );
     }
 
@@ -656,6 +861,6 @@ forms = ["orders"]
             ..Config::default()
         };
         let findings = linter(config).check_source(Language::Rust, "struct OrderMgr;").unwrap();
-        assert_eq!(findings[0].rule, Rule::Unknown);
+        assert_eq!(findings[0].rule, Rule::UnknownWord);
     }
 }

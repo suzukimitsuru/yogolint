@@ -1,4 +1,4 @@
-//! 検査対象ファイルの収集(.gitignore を尊重し、include / exclude / ignorePaths で絞る)。
+//! 検査対象ファイルの収集(.gitignore を尊重し、include / exclude / ignore-paths で絞る)。
 
 use std::path::{Path, PathBuf};
 
