@@ -31,7 +31,7 @@ fn check_reports_and_sets_exit_code() {
     assert_eq!(output.status.code(), Some(0), "warnings only");
     let text = stdout(&output);
     assert!(text.contains("src/lib.rs:1:13"), "{text}");
-    assert!(text.contains("[deny]"), "{text}");
+    assert!(text.contains("[denied-word]"), "{text}");
 
     let directory = project(&[("src/lib.rs", "fn load() { let foo = 1; }\n")]);
     let output = yogolint(directory.path(), &["check"]);
@@ -61,7 +61,7 @@ fn json_output() {
     let output = yogolint(directory.path(), &["check", "--format", "json"]);
     let report: serde_json::Value = serde_json::from_str(&stdout(&output)).unwrap();
     let finding = &report["findings"][0];
-    assert_eq!(finding["rule"], "avoid");
+    assert_eq!(finding["rule"], "avoided-word");
     assert_eq!(finding["suggestions"][0], "get");
     assert_eq!(finding["location"]["line"], 1);
     assert_eq!(report["summary"]["warnings"], 1);
@@ -90,15 +90,15 @@ fn config_include_exclude_and_domain_dictionary() {
 fn rule_settings_change_severity_and_reject_typos() {
     let directory = project(&[
         ("src/lib.rs", "fn user_delete() {}\n"),
-        ("yogolint.toml", "[rules]\nnoun-verb-order = \"error\"\n"),
+        ("yogolint.toml", "[rules]\nfunction-noun-verb-order = \"error\"\n"),
     ]);
     let output = yogolint(directory.path(), &["check"]);
     assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
-    assert!(stdout(&output).contains("[noun-verb-order]"));
+    assert!(stdout(&output).contains("[function-noun-verb-order]"));
 
     fs::write(
         directory.path().join("yogolint.toml"),
-        "[rules]\nword-order = \"none\"\n",
+        "[rules]\nnoun-verb-order = \"none\"\n",
     )
     .unwrap();
     assert_eq!(yogolint(directory.path(), &["check"]).status.code(), Some(2));
@@ -164,5 +164,8 @@ fn exported_dictionary_replaces_builtin_layer() {
     )
     .unwrap();
     let text = stdout(&yogolint(directory.path(), &["check"]));
-    assert!(text.contains("[unknown]") && !text.contains("[deny]"), "{text}");
+    assert!(
+        text.contains("[unknown-word]") && !text.contains("[denied-word]"),
+        "{text}"
+    );
 }

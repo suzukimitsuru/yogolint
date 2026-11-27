@@ -86,7 +86,7 @@ cspellと同じく「区切り文字 → 大小文字の境界 → 数字」の�
 
 - 前段の命名lintで書式は揃っているので、連結語は分割後の1つの塊の中にしか現れない。
 - 全層の辞書を使って動的計画法で分解する(語数が最小、1語は2文字以上)。分解できたら連結語とみなす。
-- 扱いは設定 `allowCompoundWords` で決める。既定は `false` で、「区切って書く」よう警告する。
+- 扱いは設定 `allow-compound-words` で決める。既定は `false` で、「区切って書く」よう警告する。
 - 分解できない塊は未知語とする。
 
 識別子の分割は研究上も完全な解法がなく、略語や固有名詞で誤ることがある([Spiral](https://www.theoj.org/joss-papers/joss.00653/10.21105.joss.00653.pdf))。誤分割は、その語を辞書に登録して直す運用とする。
@@ -172,28 +172,35 @@ orders
 
 判定順:
 
-1. deny・patternsに一致 → その項目の重大度。`position`・`kinds` の条件が合わなければ次へ進む。
-2. いずれかの層の `avoid` に一致 → 正規の語を提案し、その項目の重大度。ただし正規の語が動詞・述語接頭辞のもの(`new` → create など)は、function種別の先頭語のときだけ検査する。略語の展開(cnt → count)など名詞の同義語は位置を問わない(実装時に変更。下記「実装で設計書から変えた点」)。
+1. deny に一致 → 規則 `denied-word`、patterns に一致 → 規則 `denied-pattern`。重大度はその項目のもの。`position`・`kinds` の条件が合わなければ次へ進む。
+2. いずれかの層の `avoid` に一致 → 規則 `avoided-word`。正規の語を提案し、その項目の重大度。ただし正規の語が動詞・述語接頭辞のもの(`new` → create など)は、function種別の先頭語のときだけ検査する。略語の展開(cnt → count)など名詞の同義語は位置を問わない(実装時に変更。下記「実装で設計書から変えた点」)。
 3. 許可層(domain・verbs・nouns・abbrev)に一致 → 合格。
-4. 連結語として分解できた → `allowCompoundWords` に従う。
-5. どれにも当たらない → 未知語。重大度は設定 `[rules]` の `unknown`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
+4. 連結語として分解できた → 設定 `allow-compound-words` に従う。許さなければ規則 `compound-word`(既定は warning)。
+5. どれにも当たらない → 未知語として規則 `unknown-word`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
 
-許可層に無く `minWordLength` 未満の語は、`allowSingleLetter` に無ければ連結語・未知語の判定の前に規則 `short`(既定は warning)で報告する。
+許可層に無く `min-word-length` 未満の語は、`allow-single-letter` に無ければ連結語・未知語の判定の前に規則 `short-word`(既定は warning)で報告する。
 
-品詞位置の検査(3規則。重大度は設定 `[rules]`、認める品詞は設定 `[partOfSpeech]` で変えられる):
+`denied-word`・`denied-pattern`・`avoided-word` の重大度は辞書の項目ごとに決める。設定 `[rules]` で指定すると、全ての項目の重大度を上書きする(`none` で報告しない)。
 
-| 規則 | 検査すること | 既定の重大度 | 認める品詞の設定(Rust の既定値) |
+品詞と語順の検査(5規則。重大度と認める品詞は設定 `[rules]` で変えられる):
+
+| 規則 | 検査すること | 既定の重大度 | 認める品詞(Rust の既定値) |
 | --- | --- | --- | --- |
-| `function-head` | function種別の**先頭語**の品詞 | warning | `functionHead`(verb / prefix / noun / adjective) |
-| `name-ending` | type・value・constant種別の**末尾語**の品詞 | info | `typeEnding`(noun)、`valueEnding`(noun / preposition)、`constantEnding`(noun) |
-| `noun-verb-order` | function種別の**名詞＋動詞の語順** | warning | — |
+| `function-first-word-part-of-speech` | function種別の**先頭語**の品詞 | warning | verb / prefix / noun / adjective |
+| `type-last-word-part-of-speech` | type種別の**末尾語**の品詞 | info | noun |
+| `value-last-word-part-of-speech` | value種別の**末尾語**の品詞 | info | noun / preposition |
+| `constant-last-word-part-of-speech` | constant種別の**末尾語**の品詞 | info | noun |
+| `function-noun-verb-order` | function種別の**名詞＋動詞の語順** | warning | — |
 
-- `function-head`: 先頭語は `pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)にする。
-  - 言語の慣習で広げる。Rust では getter をフィールド名で書き(API Guidelines の C-GETTER)、コンストラクタを `new`・`empty` のように書くので、名詞・形容詞で始まる関数名と、先頭語の `new` を許す。動詞だけに戻すには `functionHead = ["verb", "prefix"]` とする。
-- `name-ending`: 末尾語は `pos: noun` にする。value種別は前置詞で終わってもよい(`started_at`、引数の `from` / `to`)。前置詞を許さないなら `valueEnding = ["noun"]` とする。
-- `noun-verb-order`: 先頭語が名詞(動詞・述語接頭辞を兼ねない語)で、2語目以降に動詞(名詞を兼ねない語)があれば報告し、動詞を先頭へ移した名前を置換候補に出す(`user_delete` → `delete_user`)。名詞で始まる関数名を許した代わりに、日本語の語順(ユーザー削除)をそのまま英語にした名前を捕まえる。`to` の後ろの動詞は不定詞(`worker_to_notify`)なので数えない。
-- テスト関数(Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数)は、名前を文で書くので3規則とも検査しない。語彙の検査はする。
+- 先頭語は `pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)にする。
+  - 言語の慣習で広げる。Rust では getter をフィールド名で書き(API Guidelines の C-GETTER)、コンストラクタを `new`・`empty` のように書くので、名詞・形容詞で始まる関数名と、先頭語の `new` を許す。動詞だけに戻すには、`function-first-word-part-of-speech` の `allow` を `["verb", "prefix"]` にする。
+- 末尾語は `pos: noun` にする。value種別は前置詞で終わってもよい(`started_at`、引数の `from` / `to`)。前置詞を許さないなら、`value-last-word-part-of-speech` の `allow` を `["noun"]` にする。
+- 名詞＋動詞の語順: 先頭語が名詞(動詞・述語接頭辞を兼ねない語)で、2語目以降に動詞(名詞を兼ねない語)があれば報告し、動詞を先頭へ移した名前を置換候補に出す(`user_delete` → `delete_user`)。名詞で始まる関数名を許した代わりに、日本語の語順(ユーザー削除)をそのまま英語にした名前を捕まえる。`to` の後ろの動詞は不定詞(`worker_to_notify`)なので数えない。
+- テスト関数(Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数)は、名前を文で書くので5規則とも検査しない。語彙の検査はする。
 - 品詞は verb / prefix / noun / adjective / adverb / preposition / determiner / conjunction のいずれか。知らない品詞名は設定の誤り(終了コード 2)とする。
+- 英字以外を含む識別子は規則 `non-ascii-identifier`(info)、構文エラー内の定義の件数は規則 `syntax-error`(info)で報告する。
+
+規則名は「何を報告するか」を kebab-case の名詞で表す。品詞は part-of-speech と略さずに書く(pos は標準辞書で position の略として避ける語にしているため)。
 
 | 重大度 | 意味 | 終了コード |
 | --- | --- | --- |
@@ -205,7 +212,7 @@ orders
 抑止の方法:
 
 - 行単位: `// yogolint-disable-next-line manager`(コメント記法は言語に合わせる)。
-- 設定の `ignoreWords`・`ignorePaths`。
+- 設定の `ignore-words`・`ignore-paths`。
 - 既存コード: `yogolint baseline` で現状の違反を記録し、以後は新しい違反だけを報告する。CIでは `--diff origin/main` で変更した定義だけを検査する。
 
 ## 設定・CLI・出力
@@ -213,40 +220,37 @@ orders
 設定は `yogolint.toml` 1つ、コマンドは5つ、出力は text・JSON・SARIF の3形式とする。
 
 ```toml
-# yogolint.toml
+# yogolint.toml(項目名は全て kebab-case)
 languages = ["rust"]
 include = ["src/**"]
 exclude = ["**/generated/**"]
 kinds = ["function", "type", "value", "constant"]
-builtinDictionaries = ["verbs", "nouns", "abbrev", "deny"]   # 埋め込み辞書のうち使う層
+builtin-dictionaries = ["verbs", "nouns", "abbrev", "deny"]   # 埋め込み辞書のうち使う層
 dictionaries = ["dicts/domain.toml"]
-allowCompoundWords = false
-minWordLength = 2
-allowSingleLetter = ["i", "j", "k", "n", "x", "y"]
-ignoreWords = []
+allow-compound-words = false
+min-word-length = 2
+allow-single-letter = ["i", "j", "k", "n", "x", "y"]
+ignore-words = []
 baseline = ".yogolint-baseline.json"
 
-# 規則ごとの重大度(error / warning / info / none)。none で報告しない
+# 規則ごとの設定。重大度(error / warning / info / none)だけなら1行で書く。none で報告しない
 [rules]
-unknown = "warning"
-compound = "warning"
-short = "warning"
-function-head = "warning"
-name-ending = "info"
-noun-verb-order = "warning"
-non-ascii = "info"
-syntax = "info"
+unknown-word = "warning"
+function-noun-verb-order = "warning"
 
-# 品詞位置の規則が認める品詞。省いた項目は言語の慣習に従う(下は Rust の既定値)
-[partOfSpeech]
-functionHead = ["verb", "prefix", "noun", "adjective"]
-typeEnding = ["noun"]
-valueEnding = ["noun", "preposition"]
-constantEnding = ["noun"]
+# 品詞の規則は表にして、重大度(severity)と認める品詞(allow)を書ける。省いた項目は言語の慣習に従う
+[rules.function-first-word-part-of-speech]
+severity = "warning"
+allow = ["verb", "prefix", "noun", "adjective"]
+
+[rules.value-last-word-part-of-speech]
+severity = "info"
+allow = ["noun", "preposition"]
 ```
 
 - 判定の仕方を変えたいときは、コマンドの引数ではなく `yogolint.toml` の設定に書く。命名の方針はリポジトリで共有するもので、言語サーバー(VSCode)も同じファイルを読むため。引数は出力形式(`--format`)など実行ごとに変わるものに限る。
-- deny・avoid の重大度は辞書の項目ごとに決めるので、`[rules]` には置かない。
+- 項目名は、規則名と同じく kebab-case で揃える。Rust のツールの設定(`Cargo.toml` の `rust-version`、`clippy.toml` の `avoid-breaking-exported-api`)に合わせる。
+- `allow` を書けるのは品詞の規則だけで、他の規則に書けば設定の誤りとする。
 
 | コマンド | 働き |
 | --- | --- |
@@ -259,10 +263,10 @@ constantEnding = ["noun"]
 text出力の例:
 
 ```text
-src/order/service.ts:12:10  warning  getOrderInfo    info: 曖昧語。何の情報かを名前にする      [deny]
-src/order/service.ts:30:7   warning  retrieveOrders  retrieve → get を使う                    [avoid]
-src/order/model.ts:5:14     warning  OrderMgr        mgr: 禁止語 manager の略記               [deny]
-src/order/model.ts:9:3      warning  shukkaDate      shukka: 未知語                           [unknown]
+src/order/service.ts:12:10  warning  getOrderInfo    info: 曖昧語。何の情報かを名前にする      [denied-word]
+src/order/service.ts:30:7   warning  retrieveOrders  retrieve → get を使う                    [avoided-word]
+src/order/model.ts:5:14     warning  OrderMgr        mgr: 禁止語 manager の略記               [denied-word]
+src/order/model.ts:9:3      warning  shukkaDate      shukka: 未知語                           [unknown-word]
 ```
 
 - SARIFはGitHubのコードスキャン画面にそのまま載る。
@@ -283,7 +287,7 @@ VSCodeのAPIを直接使わずLSPにするのは、同じサーバーをNeovim�
 | --- | --- |
 | 範囲 | range(識別子のうち該当する語の部分だけ) |
 | 重大度 error / warning / info | severity Error / Warning / Information(none は送らない) |
-| 規則 deny / avoid / unknown / compound / function-head / name-ending / noun-verb-order / short / non-ascii / syntax | code |
+| 規則(denied-word、unknown-word など。「照合規則と重大度」の各規則) | code |
 | — | source は常に yogolint |
 | 置換候補 | メッセージに表示。クイックフィックス(codeAction)は将来の拡張 |
 
@@ -438,8 +442,8 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 
 運用上の注意:
 
-- 曖昧語でも設計パターン名として定着したもの(Factory, Repository, EventHandler)や、React の onClick のようなフレームワークの慣習名は、`ignoreWords` や `kinds` で外す。
-- 業務システムの「マスタ(商品マスタなど)」は master/slave と別義である。禁止は許可より優先するので、domain層に `master` を登録しても禁止は外れない。`ignoreWords` に入れるか、`dicts export` で書き出した deny 辞書から master の行を外す。
+- 曖昧語でも設計パターン名として定着したもの(Factory, Repository, EventHandler)や、React の onClick のようなフレームワークの慣習名は、`ignore-words` や `kinds` で外す。
+- 業務システムの「マスタ(商品マスタなど)」は master/slave と別義である。禁止は許可より優先するので、domain層に `master` を登録しても禁止は外れない。`ignore-words` に入れるか、`dicts export` で書き出した deny 辞書から master の行を外す。
 - 配慮語の置き換えには業界でも賛否がある。採用するかは組織の方針で決める。
 - ローマ字の語はこの表ではなく、未知語として検出する。
 
@@ -467,7 +471,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 - `yogolint dicts export [--out dicts/] [--layer verbs,deny] [--force]` で、埋め込み辞書をTOMLファイルに書き出す。既定の出力先は `dicts/`。同名のファイルがあれば、`--force` が無い限り上書きしない。
 - 書き出したファイルの先頭に、yogolint の版と「標準辞書から書き出した」旨のコメントを入れる。版を上げたときの差分の確認に使う。
 - 同じ層のファイルを `dictionaries` に指定すると、その層の埋め込み辞書は使わない(結合せず置き換える)。書き出して編集し、指定する、という手順で標準辞書を作り変えられる。
-- 埋め込み辞書を使わない層は、`builtinDictionaries` から外す。
+- 埋め込み辞書を使わない層は、`builtin-dictionaries` から外す。
 
 ## 実装で設計書から変えた点
 
@@ -477,8 +481,8 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | --- | --- | --- | --- |
 | 避ける同義語の検査位置 | 位置を問わず報告する | 正規の語が動詞・述語接頭辞なら、function種別の先頭語のときだけ報告する。名詞の同義語・略語の展開は位置を問わない | `new_value` の形容詞 new、名詞の store・change・display などまで報告されるため |
 | 関数名の先頭に置ける語 | 動詞と is / has / can / should | to(付録Aの表どおり)と from / as / into / with を述語接頭辞(`pos = "prefix"`)として verbs 層に加えた | Rust の変換関数の命名慣習(from_str、as_bytes、into_iter、with_capacity) |
-| 禁止語と domain 層 | 「禁止は常に許可より優先」と、付録Bの「domain層に master を登録する」が食い違う | 禁止を優先する。付録Bの注意書きを `ignoreWords` か deny 辞書の行を外す運用に改めた | 照合規則の原則を優先した |
-| 規則の追加 | deny / avoid / unknown / compound / position | `short`(minWordLength 未満の語、warning)、`non-ascii`(英字以外を含む識別子、info)、`syntax`(構文エラー内の定義の件数、info)を加えた | 付録Bの(1文字)と、決定事項の「英字以外の識別子」「構文エラー」を報告する規則名が無かったため |
+| 禁止語と domain 層 | 「禁止は常に許可より優先」と、付録Bの「domain層に master を登録する」が食い違う | 禁止を優先する。付録Bの注意書きを `ignore-words` か deny 辞書の行を外す運用に改めた | 照合規則の原則を優先した |
+| 規則の追加 | deny / avoid / unknown / compound / position | `short`(minWordLength 未満の語、warning)、`non-ascii`(英字以外を含む識別子、info)、`syntax`(構文エラー内の定義の件数、info)を加えた。のちに `short-word`・`non-ascii-identifier`・`syntax-error` に改名した | 付録Bの(1文字)と、決定事項の「英字以外の識別子」「構文エラー」を報告する規則名が無かったため |
 | 禁止パターンの照合対象 | 語ごとの判定に含む | 識別子全体(前後の `_` を除き小文字にしたもの)に照合する。辞書に数字込みで登録した語(utf8 など)だけの識別子は除く | 数字は分割で捨てられ、語単位では data1 のような連番を検出できないため |
 | 標準の verbs 辞書 | 付録Aの44語 | 対語(unlock・hide・detach・unregister・unsubscribe・pop・receive・revert)を加えた。名詞としても使う語(start・stop・format・set など)は `pos = ["verb", "noun"]` とした | 対語が未知語になり、値の名前の末尾で品詞位置の誤検出が出るため |
 | 辞書の品詞 | `pos` は1つ | 文字列か配列のどちらでもよい | 動詞と名詞を兼ねる語のため |
@@ -487,14 +491,27 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | 終了コード | エラー1件以上で1 | 設定・辞書の誤りは2 | 検査結果と実行失敗を区別するため |
 | trait 実装の扱い | 定義箇所を検査する | trait 実装の中のメソッド・関連型・関連定数を抽出しない | 名前は trait 側で決まる参照で、完成判定で誤検出の最大要因(1,320 件)だったため |
 | 原形化と禁止・避ける同義語 | 原形化した形で照合する | 語そのものが許可層にあれば、原形化した形で禁止語・避ける同義語を引かない | args → arg(avoid)、string → str(deny)の誤検出(716 件)のため |
-| 関数名の先頭語(言語の慣習) | 動詞か述語接頭辞 | 言語ごとに広げる。Rust は名詞・形容詞と先頭語の new を許す | Rust の getter・コンストラクタの慣習(誤検出 361 件)のため。これで自リポジトリの `ignoreWords = ["new"]` も不要になった |
+| 関数名の先頭語(言語の慣習) | 動詞か述語接頭辞 | 言語ごとに広げる。Rust は名詞・形容詞と先頭語の new を許す | Rust の getter・コンストラクタの慣習(誤検出 361 件)のため。これで自リポジトリの `ignore-words = ["new"]` も不要になった |
 | テスト関数 | — | 品詞位置を検査しない | テスト名は文で書くため(誤検出 189 件) |
-| 語順の規則 | — | 規則 `noun-verb-order` を加えた(関数名が名詞で始まり、後ろに動詞がある) | 名詞で始まる関数名を許すと、`user_delete` のような日本語の語順の名前を見逃すため(2026年11月27日に決定。今後の検討で変わりうる) |
+| 語順の規則 | — | 規則 `function-noun-verb-order` を加えた(関数名が名詞で始まり、後ろに動詞がある) | 名詞で始まる関数名を許すと、`user_delete` のような日本語の語順の名前を見逃すため(2026年11月27日に決定。今後の検討で変わりうる) |
 | 値の名前の末尾語 | 名詞 | value種別は前置詞で終わってもよい。to / from / as / into / with の品詞に preposition を加えた | `started_at`、引数の `from` / `to` の慣用名(誤検出 57 件) |
-| 品詞位置の規則名 | `position` の1規則 | `function-head`(関数名の先頭語)と `name-ending`(名前の末尾語)に分けた | 性質の違う2つの検査を、別々に重大度を設定できるようにするため。語順の規則も `word-order` でなく `noun-verb-order` と具体的に名付けた(2026年11月27日) |
-| 重大度と品詞の設定 | `unknownWord` で未知語の重大度だけを変えられる | `[rules]` で規則ごとの重大度、`[partOfSpeech]` で品詞位置の規則が認める品詞を変えられる。`unknownWord` は `[rules]` の `unknown` に移した | 言語の慣習で緩めた規則(名詞で始まる関数名、末尾の前置詞)を、リポジトリの方針で厳しくも緩くもできるようにするため。未公開のうちに書き方を改めた(2026年11月27日) |
+| 規則名 | deny / avoid / unknown / compound / position | 「何を報告するか」を kebab-case の名詞で表す名前に改めた。deny は禁止語(`denied-word`)と禁止パターン(`denied-pattern`)に、position は関数名の先頭語と、型・値・定数の末尾語の4規則に分けた(下の対応表) | 動詞(deny・avoid)や形容詞(unknown・short)だけでは報告の中身を表さず、品詞の規則名に「品詞」が入っていなかったため。分けた規則は別々に重大度を設定できる(2026年11月27日) |
+| 規則の設定 | `unknownWord` で未知語の重大度だけを変えられる | `[rules]` で規則ごとの重大度を、品詞の規則では認める品詞(`allow`)も変えられる | 言語の慣習で緩めた規則(名詞で始まる関数名、末尾の前置詞)を、リポジトリの方針で厳しくも緩くもできるようにするため(2026年11月27日) |
+| 設定の項目名 | camelCase(`allowCompoundWords`。cspell の設定名に合わせていた) | kebab-case(`allow-compound-words`) | `[rules]` の規則名(kebab-case)と1つのファイルで混ざるため。`yogolint.toml` は cspell に読まれないので、cspell に合わせる利点が無い。未公開のうちに書き方を改めた(2026年11月27日) |
 
 ## 第1段階の完成判定
+
+この節と次の節の規則名は、計測したときの名前(deny・avoid・unknown・compound・position・short)で記す。今の名前との対応:
+
+| 計測時 | 今 |
+| --- | --- |
+| deny | denied-word、denied-pattern(連番など) |
+| avoid | avoided-word |
+| unknown | unknown-word |
+| compound | compound-word |
+| position | function-first-word-part-of-speech、type- / value- / constant-last-word-part-of-speech |
+| short | short-word |
+| word-order | function-noun-verb-order |
 
 2026年11月26日に実施。「実在するコードベース1つに words を掛け、未知語の数と誤検出の内訳を記録する」の結果を記す。
 
@@ -649,7 +666,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | 連番パターンが意味のある数字に当たる(SelectTab1〜9、regression_106) | 12 | alacritty 9 |
 | 原形化で lens → len が avoid に当たる | 1 | ripgrep |
 
-語順の規則(`noun-verb-order`。計測時の名前は `word-order`)の報告は tokio の 6 件だけで、全て名詞＋動詞の語順だった(`task_remove`、`task_push_back`、`service_write` など)。うち `env_remove`・`env_clear` は標準ライブラリの `std::process::Command` に名前を合わせたもの。計測中に、`to` の後ろの動詞(`worker_to_notify`)を報告する誤りが見つかったので直した。
+語順の規則(`function-noun-verb-order`。計測時の名前は `word-order`)の報告は tokio の 6 件だけで、全て名詞＋動詞の語順だった(`task_remove`、`task_push_back`、`service_write` など)。うち `env_remove`・`env_clear` は標準ライブラリの `std::process::Command` に名前を合わせたもの。計測中に、`to` の後ろの動詞(`worker_to_notify`)を報告する誤りが見つかったので直した。
 
 分類の方法:
 

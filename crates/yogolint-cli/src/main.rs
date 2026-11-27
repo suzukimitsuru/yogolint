@@ -118,7 +118,7 @@ fn run(cli: Cli) -> Result<ExitCode> {
         Command::Words { paths, format, limit } => {
             let workspace = Workspace::load(cli.config.as_deref())?;
             let (findings, _) = workspace.check(&paths)?;
-            let mut counts = output::count_words(&findings, &[Rule::Unknown, Rule::Compound]);
+            let mut counts = output::count_words(&findings, &[Rule::UnknownWord, Rule::CompoundWord]);
             if let Some(limit) = limit {
                 counts.truncate(limit);
             }

@@ -61,7 +61,7 @@ pub fn print_text(findings: &[FileFinding], summary: &Summary) {
     for (location, item) in &rows {
         let finding = &item.finding;
         let mut message = finding.message.clone();
-        if !finding.suggestions.is_empty() && finding.rule == Rule::Deny {
+        if !finding.suggestions.is_empty() && matches!(finding.rule, Rule::DeniedWord | Rule::DeniedPattern) {
             message.push_str(&format!("(候補: {})", finding.suggestions.join(", ")));
         }
         println!(
