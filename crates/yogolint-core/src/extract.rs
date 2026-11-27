@@ -44,6 +44,43 @@ impl Language {
         }
     }
 
+    /// 名前が外部で決まる定義か(定義でなく参照に当たるので検査しない)。
+    /// Rust では trait 実装(`impl Trait for X`)の中のメソッド・関連型・関連定数。
+    fn is_external_name(self, name: Node) -> bool {
+        match self {
+            Language::Rust => {
+                let Some(list) = name.parent().and_then(|item| item.parent()) else {
+                    return false;
+                };
+                list.kind() == "declaration_list"
+                    && list.parent().is_some_and(|parent| {
+                        parent.kind() == "impl_item" && parent.child_by_field_name("trait").is_some()
+                    })
+            }
+        }
+    }
+
+    /// テスト関数か。Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数。
+    fn is_test_function(self, name: Node, source: &str) -> bool {
+        match self {
+            Language::Rust => {
+                let Some(item) = name.parent().filter(|item| item.kind() == "function_item") else {
+                    return false;
+                };
+                let mut sibling = item.prev_named_sibling();
+                while let Some(node) = sibling {
+                    match node.kind() {
+                        "attribute_item" if is_test_attribute(&source[node.byte_range()]) => return true,
+                        "attribute_item" | "line_comment" | "block_comment" => {}
+                        _ => break,
+                    }
+                    sibling = node.prev_named_sibling();
+                }
+                false
+            }
+        }
+    }
+
     fn grammar(self) -> tree_sitter::Language {
         match self {
             Language::Rust => tree_sitter_rust::LANGUAGE.into(),
@@ -63,6 +100,32 @@ impl Language {
     }
 }
 
+/// 言語ごとの命名の慣習。品詞位置の検査に使う。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NamingConvention {
+    /// 関数名の先頭語に置ける品詞
+    pub function_head_pos: &'static [&'static str],
+    /// 関数名の先頭語なら、避ける同義語でも許す語
+    pub function_head_words: &'static [&'static str],
+    /// 関数名の先頭語の規則の説明(報告のメッセージに使う)
+    pub function_head_hint: &'static str,
+}
+
+impl Language {
+    /// 命名の慣習
+    pub fn naming(self) -> NamingConvention {
+        match self {
+            // getter は get_ を付けずにフィールド名を使い(Rust API Guidelines の C-GETTER)、
+            // コンストラクタは new や empty のように名詞・形容詞で書く
+            Language::Rust => NamingConvention {
+                function_head_pos: &["verb", "prefix", "noun", "adjective"],
+                function_head_words: &["new"],
+                function_head_hint: "動詞・述語接頭辞(is / has / to / from など)・名詞(getter)・形容詞(コンストラクタ)",
+            },
+        }
+    }
+}
+
 /// 抽出した定義名1件。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Definition {
@@ -74,6 +137,8 @@ pub struct Definition {
     pub row: usize,
     /// 行内のバイト位置
     pub column_byte: usize,
+    /// テスト関数(`#[test]` など)か。テスト名は文で書くので、品詞位置の検査から外す
+    pub is_test: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -87,6 +152,7 @@ pub struct Extraction {
 
 /// 言語ごとの構文解析器とクエリ。
 pub struct Extractor {
+    language: Language,
     parser: Parser,
     query: Query,
     name_capture: u32,
@@ -109,6 +175,7 @@ impl Extractor {
             .map(|name| Kind::from_capture_name(name))
             .collect();
         Ok(Extractor {
+            language,
             parser,
             query,
             name_capture,
@@ -148,6 +215,9 @@ impl Extractor {
                 skipped.insert(node.start_byte(), ());
                 continue;
             }
+            if self.language.is_external_name(node) {
+                continue;
+            }
             let definition = Definition {
                 name: source[node.byte_range()].to_string(),
                 kind,
@@ -155,6 +225,7 @@ impl Extractor {
                 end_byte: node.end_byte(),
                 row: node.start_position().row,
                 column_byte: node.start_position().column,
+                is_test: kind == Kind::Function && self.language.is_test_function(node, source),
             };
             let pattern = found_match.pattern_index;
             match found.get(&definition.start_byte) {
@@ -170,6 +241,15 @@ impl Extractor {
         extraction.skipped_in_error = skipped.len();
         extraction
     }
+}
+
+/// `#[test]`・`#[tokio::test]`・`#[test_case(..)]` のように、属性の最後の名前が test で始まるか。
+/// `#[cfg(test)]` は含めない。
+fn is_test_attribute(text: &str) -> bool {
+    let inner = text.trim().trim_start_matches("#[").trim_end_matches(']');
+    let path = inner.split(['(', '=', ' ']).next().unwrap_or_default();
+    let last = path.rsplit("::").next().unwrap_or_default();
+    last == "test" || last.starts_with("test_")
 }
 
 fn inside_error(node: Node) -> bool {
@@ -242,6 +322,41 @@ impl Order {
         ];
         let expected: Vec<(String, Kind)> = expected.iter().map(|(name, kind)| (name.to_string(), *kind)).collect();
         assert_eq!(found, expected);
+    }
+
+    #[test]
+    fn skips_names_decided_by_traits() {
+        let source = r#"
+trait Shape { fn area(&self) -> f64; }
+impl Iterator for Circle {
+    type Item = u8;
+    const LIMIT: u8 = 1;
+    fn next(&mut self, step_count: u8) -> Option<u8> { None }
+}
+impl Circle { fn radius(&self) -> f64 { 0.0 } }
+"#;
+        let found: Vec<String> = names(source).into_iter().map(|(name, _)| name).collect();
+        assert_eq!(found, ["Shape", "area", "step_count", "radius"]);
+    }
+
+    #[test]
+    fn marks_test_functions() {
+        let source = "#[test]\n#[ignore]\nfn parses_empty_input() {}\n#[tokio::test]\nasync fn fetches_value() {}\n#[cfg(test)]\nfn build_fixture() {}\n";
+        let mut extractor = Extractor::new(Language::Rust).unwrap();
+        let tests: Vec<(String, bool)> = extractor
+            .extract(source)
+            .definitions
+            .into_iter()
+            .map(|definition| (definition.name, definition.is_test))
+            .collect();
+        assert_eq!(
+            tests,
+            [
+                ("parses_empty_input".to_string(), true),
+                ("fetches_value".to_string(), true),
+                ("build_fixture".to_string(), false)
+            ]
+        );
     }
 
     #[test]

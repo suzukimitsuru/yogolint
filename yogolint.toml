@@ -9,5 +9,4 @@ unknownWord = "warning"
 allowCompoundWords = false
 minWordLength = 2
 allowSingleLetter = ["i", "j", "k", "n", "x", "y"]
-# Rust の慣習名(コンストラクタ new)
-ignoreWords = ["new"]
+ignoreWords = []

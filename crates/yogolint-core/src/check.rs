@@ -3,12 +3,9 @@
 use std::collections::HashMap;
 
 use crate::dict::{Dictionary, Position};
-use crate::extract::{Definition, Extractor};
+use crate::extract::{Definition, Extractor, NamingConvention};
 use crate::split::{Word, decompose_compound, split_identifier, trim_identifier};
 use crate::{Config, Finding, Kind, Language, Location, Rule, Severity};
-
-/// 関数の先頭に置ける述語接頭辞
-const PREDICATE_PREFIXES: [&str; 5] = ["is", "has", "can", "should", "to"];
 
 /// 抑止コメント
 const DISABLE_NEXT_LINE: &str = "yogolint-disable-next-line";
@@ -78,7 +75,7 @@ impl Linter {
             if !self.config.kinds.contains(&definition.kind) {
                 continue;
             }
-            for finding in self.check_definition(definition) {
+            for finding in self.check_definition(definition, language.naming()) {
                 let start_byte = definition.start_byte + finding.start;
                 let end_byte = definition.start_byte + finding.end;
                 let suppressed = disabled.get(&definition.row).is_some_and(|words| {
@@ -103,7 +100,7 @@ impl Linter {
     }
 
     /// 識別子1つを検査する(ファイルに依らない)。範囲は識別子の中のバイト位置。
-    fn check_definition(&self, definition: &Definition) -> Vec<WordFinding> {
+    fn check_definition(&self, definition: &Definition, naming: NamingConvention) -> Vec<WordFinding> {
         let identifier = definition.name.as_str();
         let kind = definition.kind;
         let (trim_start, trim_end) = trim_identifier(identifier);
@@ -152,7 +149,7 @@ impl Linter {
                 first: index == 0,
                 last: index == last,
             };
-            let verdict = self.judge_word(&word.text, kind, position);
+            let verdict = self.judge_word(&word.text, kind, position, naming);
             match verdict {
                 Verdict::Report {
                     rule,
@@ -162,8 +159,10 @@ impl Linter {
                 } => {
                     findings.push(WordFinding::new(word, rule, severity, message, suggestions));
                 }
+                // テスト関数の名前は文で書くので、品詞位置は検査しない
+                Verdict::Allowed { .. } if definition.is_test => {}
                 Verdict::Allowed { pos } => {
-                    if let Some(finding) = self.check_part_of_speech(word, &pos, kind, position, &words) {
+                    if let Some(finding) = self.check_part_of_speech(word, &pos, kind, position, &words, naming) {
                         findings.push(finding);
                     }
                 }
@@ -180,14 +179,25 @@ impl Linter {
     }
 
     /// 1語を判定する。
-    fn judge_word(&self, text: &str, kind: Kind, position: WordPosition) -> Verdict {
+    fn judge_word(&self, text: &str, kind: Kind, position: WordPosition, naming: NamingConvention) -> Verdict {
         if self.is_ignored(text) {
             return Verdict::Allowed { pos: vec![] };
         }
+        // 言語の慣習で関数名の先頭に置く語(Rust の new)
+        if kind == Kind::Function && position.first && naming.function_head_words.contains(&text) {
+            return Verdict::Allowed { pos: vec![] };
+        }
         let candidates = base_forms(text, &self.dictionary);
+        // 語そのものが許可層にあれば、原形化した形で禁止語・避ける同義語を引かない
+        // (string → str、args → arg のような誤った原形を避ける)
+        let lookups = if self.dictionary.allowed.contains_key(text) {
+            &candidates[..1]
+        } else {
+            &candidates[..]
+        };
 
         // 1. 禁止語
-        for candidate in &candidates {
+        for candidate in lookups {
             if let Some(denied) = self.dictionary.denied.get(candidate) {
                 let position_ok = match denied.position {
                     Position::Any => true,
@@ -213,7 +223,7 @@ impl Linter {
         }
 
         // 2. 避ける同義語。動詞の同義語は、動詞の置き場所(関数の先頭語)でだけ検査する
-        for candidate in &candidates {
+        for candidate in lookups {
             if let Some(avoid) = self.dictionary.avoid.get(candidate) {
                 let verb_like = avoid.canonical_pos.iter().any(|pos| pos == "verb" || pos == "prefix");
                 if !verb_like || (kind == Kind::Function && position.first) {
@@ -291,6 +301,7 @@ impl Linter {
         kind: Kind,
         position: WordPosition,
         words: &[Word],
+        naming: NamingConvention,
     ) -> Option<WordFinding> {
         // 品詞が分からない語(ignoreWords・1文字の許可語)は検査しない
         if pos.is_empty() {
@@ -298,17 +309,13 @@ impl Linter {
         }
         match kind {
             Kind::Function if position.first => {
-                let ok = pos.iter().any(|p| p == "verb" || p == "prefix")
-                    || PREDICATE_PREFIXES.contains(&word.text.as_str());
+                let ok = pos.iter().any(|p| naming.function_head_pos.contains(&p.as_str()));
                 (!ok).then(|| {
                     WordFinding::new(
                         word,
                         Rule::Position,
                         Severity::Warning,
-                        format!(
-                            "{}: 関数名の先頭は動詞か述語接頭辞(is / has / can / should)にする",
-                            word.text
-                        ),
+                        format!("{}: 関数名の先頭は{}にする", word.text, naming.function_head_hint),
                         vec![],
                     )
                 })
@@ -545,8 +552,8 @@ forms = ["orders"]
         // new は create の同義語だが、形容詞として使う変数名では報告しない
         assert_eq!(check("fn load() { let new_order = 0; }"), vec![]);
         assert_eq!(
-            check("fn new() {}"),
-            vec![("new".into(), Rule::Avoid, Severity::Warning)]
+            check("fn make_order() {}"),
+            vec![("make".into(), Rule::Avoid, Severity::Warning)]
         );
         // 略語の展開は位置を問わない
         assert_eq!(
@@ -558,8 +565,8 @@ forms = ["orders"]
     #[test]
     fn part_of_speech_rules() {
         assert_eq!(
-            check("fn price_total() {}"),
-            vec![("price".into(), Rule::Position, Severity::Warning)]
+            check("fn only_price() {}"),
+            vec![("only".into(), Rule::Position, Severity::Warning)]
         );
         assert_eq!(
             check("struct OrderEmpty;"),
@@ -570,6 +577,44 @@ forms = ["orders"]
     #[test]
     fn inflections_and_forms() {
         assert_eq!(check("fn load() { let orders = 0; let updated_values = 0; }"), vec![]);
+    }
+
+    #[test]
+    fn allowed_words_are_not_matched_by_their_stems() {
+        // args → arg(避ける同義語)、string → str(禁止語)と原形化しない
+        assert_eq!(check("fn load(args: u8, string_value: u8) {}"), vec![]);
+        // 語そのものが許可層に無ければ、原形化した形で引く
+        assert_eq!(
+            check("fn load() { let order_cnts = 0; }"),
+            vec![("cnts".into(), Rule::Avoid, Severity::Info)]
+        );
+    }
+
+    #[test]
+    fn rust_naming_conventions() {
+        // getter(C-GETTER)とコンストラクタ new・empty
+        assert_eq!(
+            check("impl Order { fn new() {} fn price(&self) {} fn empty() {} }"),
+            vec![]
+        );
+    }
+
+    #[test]
+    fn test_functions_skip_part_of_speech() {
+        assert_eq!(check("#[test]\nfn only_price() {}"), vec![]);
+        // 未知語は検査する
+        assert_eq!(
+            check("#[test]\nfn load_shukka() {}"),
+            vec![("shukka".into(), Rule::Unknown, Severity::Warning)]
+        );
+    }
+
+    #[test]
+    fn trait_implementations_are_not_checked() {
+        assert_eq!(
+            check("impl Iterator for Order { type Item = u8; fn next(&mut self) -> Option<u8> { None } }"),
+            vec![]
+        );
     }
 
     #[test]
