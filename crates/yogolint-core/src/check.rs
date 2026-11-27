@@ -115,6 +115,7 @@ impl Linter {
         Naming {
             function_head: resolve(Rule::FunctionFirstWordPartOfSpeech, convention.function_head_pos),
             function_head_words: convention.function_head_words,
+            standard_terms: convention.standard_terms,
             type_ending: resolve(Rule::TypeLastWordPartOfSpeech, convention.type_ending_pos),
             value_ending: resolve(Rule::ValueLastWordPartOfSpeech, convention.value_ending_pos),
             constant_ending: resolve(Rule::ConstantLastWordPartOfSpeech, convention.constant_ending_pos),
@@ -226,7 +227,29 @@ impl Linter {
         if kind == Kind::Function && position.first && naming.function_head_words.contains(&text) {
             return Verdict::Allowed { pos: vec![] };
         }
+        // 短すぎる語は、辞書を引く前に長さで判定する(辞書に冠詞として載る a も報告する)
+        if text.len() < self.config.min_word_length {
+            if self.config.allow_single_letter.iter().any(|letter| letter == text) {
+                return Verdict::Allowed { pos: vec![] };
+            }
+            return Verdict::Report {
+                rule: Rule::ShortWord,
+                severity: self.severity(Rule::ShortWord),
+                message: format!("{text}: 短すぎて意図を表さない"),
+                suggestions: vec![],
+            };
+        }
         let candidates = base_forms(text, &self.dictionary);
+        // 言語の標準ライブラリの用語(Rust の drop・clone など)。避ける同義語に当たっても許す
+        if let Some(pos) = candidates.iter().find_map(|candidate| {
+            naming
+                .standard_terms
+                .iter()
+                .find(|(term, _)| term == candidate)
+                .map(|(_, pos)| pos.iter().map(|p| p.to_string()).collect())
+        }) {
+            return Verdict::Allowed { pos };
+        }
         // 語そのものが許可層にあれば、原形化した形で禁止語・避ける同義語を引かない
         // (string → str、args → arg のような誤った原形を避ける)
         let lookups = if self.dictionary.allowed.contains_key(text) {
@@ -283,19 +306,6 @@ impl Linter {
                     pos: allowed.pos.clone(),
                 };
             }
-        }
-
-        // 短すぎる語
-        if text.len() < self.config.min_word_length {
-            if self.config.allow_single_letter.iter().any(|letter| letter == text) {
-                return Verdict::Allowed { pos: vec![] };
-            }
-            return Verdict::Report {
-                rule: Rule::ShortWord,
-                severity: self.severity(Rule::ShortWord),
-                message: format!("{text}: 短すぎて意図を表さない"),
-                suggestions: vec![],
-            };
         }
 
         // 4. 連結語
@@ -377,6 +387,7 @@ impl Linter {
 struct Naming {
     function_head: Vec<String>,
     function_head_words: &'static [&'static str],
+    standard_terms: &'static [(&'static str, &'static [&'static str])],
     type_ending: Vec<String>,
     value_ending: Vec<String>,
     constant_ending: Vec<String>,
@@ -801,6 +812,56 @@ allow = ["noun"]
                 ("from".to_string(), Rule::ValueLastWordPartOfSpeech, Severity::Info),
                 ("shukka".to_string(), Rule::UnknownWord, Severity::Error),
             ]
+        );
+    }
+
+    #[test]
+    fn short_words_are_checked_before_the_dictionary() {
+        // a は辞書に冠詞として載るが、1文字の名前として報告する
+        assert_eq!(
+            check("fn load(a: u8, value_a: u8, i: u8) {}"),
+            vec![
+                ("a".into(), Rule::ShortWord, Severity::Warning),
+                ("a".into(), Rule::ShortWord, Severity::Warning)
+            ]
+        );
+        let config = Config {
+            allow_single_letter: vec!["a".into()],
+            ..Config::default()
+        };
+        assert!(
+            linter(config)
+                .check_source(Language::Rust, "fn load(a: u8) {}")
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn rust_standard_terms_are_not_avoided() {
+        // drop → remove、clone → copy などと言い換えない。変化形(dropping)も同じ
+        assert_eq!(
+            check(
+                "fn drop_task() {}\nfn clone_order() {}\nfn acquire_order() {}\nfn release_order() {}\nfn dropping_order() {}"
+            ),
+            vec![]
+        );
+        assert_eq!(
+            check("impl Order { fn store(&self) {} fn display_offset(&self) {} fn seek_order(&self) {} }"),
+            vec![]
+        );
+        // 標準の用語でない同義語は今までどおり報告する
+        assert_eq!(
+            check("fn free_order() {}"),
+            vec![("free".into(), Rule::AvoidedWord, Severity::Warning)]
+        );
+        // 動詞なので、名詞＋動詞の語順は報告する
+        assert_eq!(
+            check("fn user_drop() {}")
+                .into_iter()
+                .map(|finding| finding.1)
+                .collect::<Vec<_>>(),
+            [Rule::FunctionNounVerbOrder]
         );
     }
 

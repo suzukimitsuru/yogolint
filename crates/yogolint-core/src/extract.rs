@@ -100,18 +100,20 @@ impl Language {
     }
 }
 
-/// 言語ごとの命名の慣習。品詞位置の規則の既定値に使う(設定 `[partOfSpeech]` で上書きできる)。
+/// 言語ごとの命名の慣習。品詞の規則の既定値に使う(設定 `[rules]` の `allow` で上書きできる)。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NamingConvention {
-    /// 関数名の先頭語に置ける品詞(規則 function-head)
+    /// 関数名の先頭語に置ける品詞(規則 function-first-word-part-of-speech)
     pub function_head_pos: &'static [&'static str],
-    /// 関数名の先頭語なら、避ける同義語でも許す語
+    /// 関数名の先頭語なら、避ける同義語でも許し、品詞も問わない語
     pub function_head_words: &'static [&'static str],
-    /// 型名の末尾語に置ける品詞(規則 name-ending)
+    /// 標準ライブラリの用語と、その品詞。標準辞書で避ける同義語に当たっても許す
+    pub standard_terms: &'static [(&'static str, &'static [&'static str])],
+    /// 型名の末尾語に置ける品詞(規則 type-last-word-part-of-speech)
     pub type_ending_pos: &'static [&'static str],
-    /// 値の名前の末尾語に置ける品詞(規則 name-ending)
+    /// 値の名前の末尾語に置ける品詞(規則 value-last-word-part-of-speech)
     pub value_ending_pos: &'static [&'static str],
-    /// 定数名の末尾語に置ける品詞(規則 name-ending)
+    /// 定数名の末尾語に置ける品詞(規則 constant-last-word-part-of-speech)
     pub constant_ending_pos: &'static [&'static str],
 }
 
@@ -121,10 +123,22 @@ impl Language {
         match self {
             // getter は get_ を付けずにフィールド名を使い(Rust API Guidelines の C-GETTER)、
             // コンストラクタは new や empty のように名詞・形容詞で書く。
-            // 値の名前は前置詞で終わってもよい(started_at、引数の from / to)
+            // 値の名前は前置詞で終わってもよい(started_at、引数の from / to)。
+            // 標準ライブラリの用語は、標準辞書の同義語と意味が違うので許す
+            // (Drop は remove でなくデストラクタ、Clone は Copy と別、Ordering::Acquire / Release、
+            // 原子操作の load / store、io::Seek、fmt::Display)
             Language::Rust => NamingConvention {
                 function_head_pos: &["verb", "prefix", "noun", "adjective"],
                 function_head_words: &["new"],
+                standard_terms: &[
+                    ("drop", &["verb"]),
+                    ("clone", &["verb"]),
+                    ("acquire", &["verb"]),
+                    ("release", &["verb", "noun"]),
+                    ("store", &["verb", "noun"]),
+                    ("seek", &["verb"]),
+                    ("display", &["verb", "noun"]),
+                ],
                 type_ending_pos: &["noun"],
                 value_ending_pos: &["noun", "preposition"],
                 constant_ending_pos: &["noun"],
