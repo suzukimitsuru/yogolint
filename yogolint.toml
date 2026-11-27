@@ -5,7 +5,6 @@ exclude = ["**/target/**"]
 kinds = ["function", "type", "value", "constant"]
 builtinDictionaries = ["verbs", "nouns", "abbrev", "deny"]
 dictionaries = ["dicts/domain.toml"]
-unknownWord = "warning"
 allowCompoundWords = false
 minWordLength = 2
 allowSingleLetter = ["i", "j", "k", "n", "x", "y"]

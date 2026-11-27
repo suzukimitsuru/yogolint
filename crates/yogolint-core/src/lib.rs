@@ -80,10 +80,12 @@ pub enum Rule {
     Compound,
     /// 未知語
     Unknown,
-    /// 品詞位置
-    Position,
-    /// 語順(関数名が名詞で始まり、後ろに動詞がある)
-    WordOrder,
+    /// 関数名の先頭語の品詞
+    FunctionHead,
+    /// 型・値・定数の名前の末尾語の品詞
+    NameEnding,
+    /// 名詞＋動詞の語順の関数名(user_delete)
+    NounVerbOrder,
     /// 短すぎる語
     Short,
     /// 英字以外を含む識別子(検査しない)
@@ -99,8 +101,9 @@ impl Rule {
             Rule::Avoid => "avoid",
             Rule::Compound => "compound",
             Rule::Unknown => "unknown",
-            Rule::Position => "position",
-            Rule::WordOrder => "word-order",
+            Rule::FunctionHead => "function-head",
+            Rule::NameEnding => "name-ending",
+            Rule::NounVerbOrder => "noun-verb-order",
             Rule::Short => "short",
             Rule::NonAscii => "non-ascii",
             Rule::Syntax => "syntax",

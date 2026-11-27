@@ -32,13 +32,33 @@ exclude = ["**/generated/**"]
 kinds = ["function", "type", "value", "constant"]
 builtinDictionaries = ["verbs", "nouns", "abbrev", "deny"]   # 埋め込み辞書のうち使う層
 dictionaries = ["dicts/domain.toml"]                         # 同じ層の埋め込み辞書を置き換える
-unknownWord = "warning"
 allowCompoundWords = false
 minWordLength = 2
 allowSingleLetter = ["i", "j", "k", "n", "x", "y"]
 ignoreWords = []
 ignorePaths = []
+
+# 規則ごとの重大度(error / warning / info / none)。none で報告しない。
+# deny・avoid の重大度は辞書の項目ごとに決める
+[rules]
+unknown = "warning"            # 未知語
+compound = "warning"           # 連結語
+short = "warning"              # minWordLength 未満の語
+function-head = "warning"      # 関数名の先頭語の品詞
+name-ending = "info"           # 型・値・定数の名前の末尾語の品詞
+noun-verb-order = "warning"    # 名詞＋動詞の語順の関数名(user_delete → delete_user)
+non-ascii = "info"             # 英字以外を含む識別子(検査しない)
+syntax = "info"                # 構文エラー内の定義(検査しない)
+
+# 品詞位置の規則が認める品詞。省いた項目は言語の慣習に従う(下は Rust の既定値)
+[partOfSpeech]
+functionHead = ["verb", "prefix", "noun", "adjective"]
+typeEnding = ["noun"]
+valueEnding = ["noun", "preposition"]   # started_at、引数の from / to
+constantEnding = ["noun"]
 ```
+
+品詞は verb / prefix / noun / adjective / adverb / preposition / determiner / conjunction のいずれか。
 
 行単位の抑止: `// yogolint-disable-next-line mgr`(語を省くと、次の行の全ての報告を抑止する)。
 

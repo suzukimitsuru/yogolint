@@ -87,6 +87,24 @@ fn config_include_exclude_and_domain_dictionary() {
 }
 
 #[test]
+fn rule_settings_change_severity_and_reject_typos() {
+    let directory = project(&[
+        ("src/lib.rs", "fn user_delete() {}\n"),
+        ("yogolint.toml", "[rules]\nnoun-verb-order = \"error\"\n"),
+    ]);
+    let output = yogolint(directory.path(), &["check"]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(stdout(&output).contains("[noun-verb-order]"));
+
+    fs::write(
+        directory.path().join("yogolint.toml"),
+        "[rules]\nword-order = \"none\"\n",
+    )
+    .unwrap();
+    assert_eq!(yogolint(directory.path(), &["check"]).status.code(), Some(2));
+}
+
+#[test]
 fn words_lists_unknown_words_by_count() {
     let directory = project(&[(
         "src/lib.rs",

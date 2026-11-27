@@ -176,17 +176,24 @@ orders
 2. いずれかの層の `avoid` に一致 → 正規の語を提案し、その項目の重大度。ただし正規の語が動詞・述語接頭辞のもの(`new` → create など)は、function種別の先頭語のときだけ検査する。略語の展開(cnt → count)など名詞の同義語は位置を問わない(実装時に変更。下記「実装で設計書から変えた点」)。
 3. 許可層(domain・verbs・nouns・abbrev)に一致 → 合格。
 4. 連結語として分解できた → `allowCompoundWords` に従う。
-5. どれにも当たらない → 未知語。重大度は設定 `unknownWord`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
+5. どれにも当たらない → 未知語。重大度は設定 `[rules]` の `unknown`(既定は warning)。ローマ字の語(kingaku など)もここで捕まる。
 
-許可層に無く `minWordLength` 未満の語は、`allowSingleLetter` に無ければ連結語・未知語の判定の前に規則 `short`(warning)で報告する。
+許可層に無く `minWordLength` 未満の語は、`allowSingleLetter` に無ければ連結語・未知語の判定の前に規則 `short`(既定は warning)で報告する。
 
-品詞位置の検査(最小構成は2規則のみ):
+品詞位置の検査(3規則。重大度は設定 `[rules]`、認める品詞は設定 `[partOfSpeech]` で変えられる):
 
-- function種別の**先頭語**は、`pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)。違反は warning。
-  - 言語の慣習で広げる。Rust では getter をフィールド名で書き(API Guidelines の C-GETTER)、コンストラクタを `new`・`empty` のように書くので、名詞・形容詞で始まる関数名と、先頭語の `new` を許す。
-  - テスト関数(Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数)は、名前を文で書くので品詞位置を検査しない。語彙の検査はする。
-- function種別の**語順**: 先頭語が名詞(動詞・述語接頭辞を兼ねない語)で、2語目以降に動詞(名詞を兼ねない語)があれば、規則 `word-order`(warning)で報告し、動詞を先頭へ移した名前を置換候補に出す(`user_delete` → `delete_user`)。名詞で始まる関数名を許した代わりに、日本語の語順(ユーザー削除)をそのまま英語にした名前を捕まえる。`to` の後ろの動詞は不定詞(`worker_to_notify`)なので数えない。テスト関数は検査しない。
-- type・value・constant種別の**末尾語**は `pos: noun`。違反は info。ただし value種別は前置詞で終わってもよい(`started_at`、引数の `from` / `to`)。
+| 規則 | 検査すること | 既定の重大度 | 認める品詞の設定(Rust の既定値) |
+| --- | --- | --- | --- |
+| `function-head` | function種別の**先頭語**の品詞 | warning | `functionHead`(verb / prefix / noun / adjective) |
+| `name-ending` | type・value・constant種別の**末尾語**の品詞 | info | `typeEnding`(noun)、`valueEnding`(noun / preposition)、`constantEnding`(noun) |
+| `noun-verb-order` | function種別の**名詞＋動詞の語順** | warning | — |
+
+- `function-head`: 先頭語は `pos: verb` または述語接頭辞(is / has / can / should / to、Rust の変換慣習の from / as / into / with)にする。
+  - 言語の慣習で広げる。Rust では getter をフィールド名で書き(API Guidelines の C-GETTER)、コンストラクタを `new`・`empty` のように書くので、名詞・形容詞で始まる関数名と、先頭語の `new` を許す。動詞だけに戻すには `functionHead = ["verb", "prefix"]` とする。
+- `name-ending`: 末尾語は `pos: noun` にする。value種別は前置詞で終わってもよい(`started_at`、引数の `from` / `to`)。前置詞を許さないなら `valueEnding = ["noun"]` とする。
+- `noun-verb-order`: 先頭語が名詞(動詞・述語接頭辞を兼ねない語)で、2語目以降に動詞(名詞を兼ねない語)があれば報告し、動詞を先頭へ移した名前を置換候補に出す(`user_delete` → `delete_user`)。名詞で始まる関数名を許した代わりに、日本語の語順(ユーザー削除)をそのまま英語にした名前を捕まえる。`to` の後ろの動詞は不定詞(`worker_to_notify`)なので数えない。
+- テスト関数(Rust では `#[test]`・`#[tokio::test]` などの属性が付いた関数)は、名前を文で書くので3規則とも検査しない。語彙の検査はする。
+- 品詞は verb / prefix / noun / adjective / adverb / preposition / determiner / conjunction のいずれか。知らない品詞名は設定の誤り(終了コード 2)とする。
 
 | 重大度 | 意味 | 終了コード |
 | --- | --- | --- |
@@ -213,13 +220,33 @@ exclude = ["**/generated/**"]
 kinds = ["function", "type", "value", "constant"]
 builtinDictionaries = ["verbs", "nouns", "abbrev", "deny"]   # 埋め込み辞書のうち使う層
 dictionaries = ["dicts/domain.toml"]
-unknownWord = "warning"
 allowCompoundWords = false
 minWordLength = 2
 allowSingleLetter = ["i", "j", "k", "n", "x", "y"]
 ignoreWords = []
 baseline = ".yogolint-baseline.json"
+
+# 規則ごとの重大度(error / warning / info / none)。none で報告しない
+[rules]
+unknown = "warning"
+compound = "warning"
+short = "warning"
+function-head = "warning"
+name-ending = "info"
+noun-verb-order = "warning"
+non-ascii = "info"
+syntax = "info"
+
+# 品詞位置の規則が認める品詞。省いた項目は言語の慣習に従う(下は Rust の既定値)
+[partOfSpeech]
+functionHead = ["verb", "prefix", "noun", "adjective"]
+typeEnding = ["noun"]
+valueEnding = ["noun", "preposition"]
+constantEnding = ["noun"]
 ```
+
+- 判定の仕方を変えたいときは、コマンドの引数ではなく `yogolint.toml` の設定に書く。命名の方針はリポジトリで共有するもので、言語サーバー(VSCode)も同じファイルを読むため。引数は出力形式(`--format`)など実行ごとに変わるものに限る。
+- deny・avoid の重大度は辞書の項目ごとに決めるので、`[rules]` には置かない。
 
 | コマンド | 働き |
 | --- | --- |
@@ -256,7 +283,7 @@ VSCodeのAPIを直接使わずLSPにするのは、同じサーバーをNeovim�
 | --- | --- |
 | 範囲 | range(識別子のうち該当する語の部分だけ) |
 | 重大度 error / warning / info | severity Error / Warning / Information(none は送らない) |
-| 規則 deny / avoid / unknown / compound / position / word-order / short / non-ascii / syntax | code |
+| 規則 deny / avoid / unknown / compound / function-head / name-ending / noun-verb-order / short / non-ascii / syntax | code |
 | — | source は常に yogolint |
 | 置換候補 | メッセージに表示。クイックフィックス(codeAction)は将来の拡張 |
 
@@ -462,8 +489,10 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | 原形化と禁止・避ける同義語 | 原形化した形で照合する | 語そのものが許可層にあれば、原形化した形で禁止語・避ける同義語を引かない | args → arg(avoid)、string → str(deny)の誤検出(716 件)のため |
 | 関数名の先頭語(言語の慣習) | 動詞か述語接頭辞 | 言語ごとに広げる。Rust は名詞・形容詞と先頭語の new を許す | Rust の getter・コンストラクタの慣習(誤検出 361 件)のため。これで自リポジトリの `ignoreWords = ["new"]` も不要になった |
 | テスト関数 | — | 品詞位置を検査しない | テスト名は文で書くため(誤検出 189 件) |
-| 語順の規則 | — | 規則 `word-order` を加えた(関数名が名詞で始まり、後ろに動詞がある) | 名詞で始まる関数名を許すと、`user_delete` のような日本語の語順の名前を見逃すため(2026年11月27日に決定。今後の検討で変わりうる) |
+| 語順の規則 | — | 規則 `noun-verb-order` を加えた(関数名が名詞で始まり、後ろに動詞がある) | 名詞で始まる関数名を許すと、`user_delete` のような日本語の語順の名前を見逃すため(2026年11月27日に決定。今後の検討で変わりうる) |
 | 値の名前の末尾語 | 名詞 | value種別は前置詞で終わってもよい。to / from / as / into / with の品詞に preposition を加えた | `started_at`、引数の `from` / `to` の慣用名(誤検出 57 件) |
+| 品詞位置の規則名 | `position` の1規則 | `function-head`(関数名の先頭語)と `name-ending`(名前の末尾語)に分けた | 性質の違う2つの検査を、別々に重大度を設定できるようにするため。語順の規則も `word-order` でなく `noun-verb-order` と具体的に名付けた(2026年11月27日) |
+| 重大度と品詞の設定 | `unknownWord` で未知語の重大度だけを変えられる | `[rules]` で規則ごとの重大度、`[partOfSpeech]` で品詞位置の規則が認める品詞を変えられる。`unknownWord` は `[rules]` の `unknown` に移した | 言語の慣習で緩めた規則(名詞で始まる関数名、末尾の前置詞)を、リポジトリの方針で厳しくも緩くもできるようにするため。未公開のうちに書き方を改めた(2026年11月27日) |
 
 ## 第1段階の完成判定
 
@@ -620,7 +649,7 @@ create と new、init と initialize はどちらを正にするか組織ごと�
 | 連番パターンが意味のある数字に当たる(SelectTab1〜9、regression_106) | 12 | alacritty 9 |
 | 原形化で lens → len が avoid に当たる | 1 | ripgrep |
 
-語順の規則(`word-order`)の報告は tokio の 6 件だけで、全て名詞＋動詞の語順だった(`task_remove`、`task_push_back`、`service_write` など)。うち `env_remove`・`env_clear` は標準ライブラリの `std::process::Command` に名前を合わせたもの。計測中に、`to` の後ろの動詞(`worker_to_notify`)を報告する誤りが見つかったので直した。
+語順の規則(`noun-verb-order`。計測時の名前は `word-order`)の報告は tokio の 6 件だけで、全て名詞＋動詞の語順だった(`task_remove`、`task_push_back`、`service_write` など)。うち `env_remove`・`env_clear` は標準ライブラリの `std::process::Command` に名前を合わせたもの。計測中に、`to` の後ろの動詞(`worker_to_notify`)を報告する誤りが見つかったので直した。
 
 分類の方法:
 

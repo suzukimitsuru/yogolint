@@ -100,15 +100,19 @@ impl Language {
     }
 }
 
-/// 言語ごとの命名の慣習。品詞位置の検査に使う。
+/// 言語ごとの命名の慣習。品詞位置の規則の既定値に使う(設定 `[partOfSpeech]` で上書きできる)。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NamingConvention {
-    /// 関数名の先頭語に置ける品詞
+    /// 関数名の先頭語に置ける品詞(規則 function-head)
     pub function_head_pos: &'static [&'static str],
     /// 関数名の先頭語なら、避ける同義語でも許す語
     pub function_head_words: &'static [&'static str],
-    /// 関数名の先頭語の規則の説明(報告のメッセージに使う)
-    pub function_head_hint: &'static str,
+    /// 型名の末尾語に置ける品詞(規則 name-ending)
+    pub type_ending_pos: &'static [&'static str],
+    /// 値の名前の末尾語に置ける品詞(規則 name-ending)
+    pub value_ending_pos: &'static [&'static str],
+    /// 定数名の末尾語に置ける品詞(規則 name-ending)
+    pub constant_ending_pos: &'static [&'static str],
 }
 
 impl Language {
@@ -116,11 +120,14 @@ impl Language {
     pub fn naming(self) -> NamingConvention {
         match self {
             // getter は get_ を付けずにフィールド名を使い(Rust API Guidelines の C-GETTER)、
-            // コンストラクタは new や empty のように名詞・形容詞で書く
+            // コンストラクタは new や empty のように名詞・形容詞で書く。
+            // 値の名前は前置詞で終わってもよい(started_at、引数の from / to)
             Language::Rust => NamingConvention {
                 function_head_pos: &["verb", "prefix", "noun", "adjective"],
                 function_head_words: &["new"],
-                function_head_hint: "動詞・述語接頭辞(is / has / to / from など)・名詞(getter)・形容詞(コンストラクタ)",
+                type_ending_pos: &["noun"],
+                value_ending_pos: &["noun", "preposition"],
+                constant_ending_pos: &["noun"],
             },
         }
     }
