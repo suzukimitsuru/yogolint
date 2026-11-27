@@ -143,13 +143,18 @@ impl Linter {
 
         let words = split_identifier(identifier, &self.dictionary.digit_words);
         let last = words.len().saturating_sub(1);
+        let position_of = |index: usize| WordPosition {
+            first: index == 0,
+            last: index == last,
+        };
+        let verdicts: Vec<Verdict> = words
+            .iter()
+            .enumerate()
+            .map(|(index, word)| self.judge_word(&word.text, kind, position_of(index), naming))
+            .collect();
         let mut findings = Vec::new();
-        for (index, word) in words.iter().enumerate() {
-            let position = WordPosition {
-                first: index == 0,
-                last: index == last,
-            };
-            let verdict = self.judge_word(&word.text, kind, position, naming);
+        for ((index, word), verdict) in words.iter().enumerate().zip(verdicts.iter().cloned()) {
+            let position = position_of(index);
             match verdict {
                 Verdict::Report {
                     rule,
@@ -167,6 +172,12 @@ impl Linter {
                     }
                 }
             }
+        }
+        if kind == Kind::Function
+            && !definition.is_test
+            && let Some(finding) = check_word_order(identifier, &words, &verdicts)
+        {
+            findings.push(finding);
         }
         findings
     }
@@ -321,7 +332,10 @@ impl Linter {
                 })
             }
             Kind::Type | Kind::Value | Kind::Constant if position.last => {
-                let ok = pos.iter().any(|p| p == "noun");
+                // 値の名前は前置詞で終わってもよい(started_at、引数の from / to)
+                let ok = pos
+                    .iter()
+                    .any(|p| p == "noun" || (kind == Kind::Value && p == "preposition"));
                 // 1語だけの名前の真偽値(enabled など)も報告するが、重大度は info
                 (!ok).then(|| {
                     let what = if words.len() == 1 { "名前" } else { "名前の末尾" };
@@ -371,6 +385,62 @@ impl WordFinding {
             suggestions,
         }
     }
+}
+
+/// 語順の検査。関数名が名詞で始まり、2語目以降に動詞があれば報告する(user_delete → delete_user)。
+/// 先頭語が動詞・述語接頭辞を兼ねる語、後ろの語が名詞を兼ねる語(start・cache など)は報告しない。
+fn check_word_order(identifier: &str, words: &[Word], verdicts: &[Verdict]) -> Option<WordFinding> {
+    let pos_of = |index: usize| match &verdicts[index] {
+        Verdict::Allowed { pos } => Some(pos.as_slice()),
+        Verdict::Report { .. } => None,
+    };
+    let head = pos_of(0)?;
+    let noun_head = head.iter().any(|p| p == "noun") && !head.iter().any(|p| p == "verb" || p == "prefix");
+    if !noun_head {
+        return None;
+    }
+    // to の後ろの動詞は不定詞(worker_to_notify)なので数えない
+    let verb_index = (1..words.len()).find(|&index| {
+        words[index - 1].text != "to"
+            && pos_of(index).is_some_and(|pos| !pos.is_empty() && pos.iter().all(|p| p == "verb"))
+    })?;
+    let verb = &words[verb_index];
+    let reordered: Vec<&str> = std::iter::once(verb.text.as_str())
+        .chain(
+            words
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != verb_index)
+                .map(|(_, word)| word.text.as_str()),
+        )
+        .collect();
+    let suggestion = if identifier.contains('_') || !identifier.bytes().any(|b| b.is_ascii_uppercase()) {
+        reordered.join("_")
+    } else {
+        // camelCase は先頭語を小文字、以降を頭文字だけ大文字にする
+        reordered
+            .iter()
+            .enumerate()
+            .map(|(index, word)| {
+                if index == 0 {
+                    word.to_string()
+                } else {
+                    let mut chars = word.chars();
+                    chars
+                        .next()
+                        .map(|first| first.to_ascii_uppercase().to_string() + chars.as_str())
+                        .unwrap_or_default()
+                }
+            })
+            .collect()
+    };
+    Some(WordFinding::new(
+        verb,
+        Rule::WordOrder,
+        Severity::Warning,
+        format!("{}: 動詞を関数名の先頭に置く({suggestion})", verb.text),
+        vec![suggestion],
+    ))
 }
 
 /// 原形の候補。語そのもの、forms に登録した原形、規則変化(-s / -es / -ies / -ed / -ing)を外した形の順。
@@ -596,6 +666,41 @@ forms = ["orders"]
         assert_eq!(
             check("impl Order { fn new() {} fn price(&self) {} fn empty() {} }"),
             vec![]
+        );
+    }
+
+    #[test]
+    fn reports_noun_then_verb_order() {
+        let findings = linter(Config::default())
+            .check_source(Language::Rust, "fn user_delete(id: u64) {}\nfn configLoad() {}")
+            .unwrap();
+        let order: Vec<(String, Vec<String>)> = findings
+            .into_iter()
+            .filter(|finding| finding.rule == Rule::WordOrder)
+            .map(|finding| (finding.word, finding.suggestions))
+            .collect();
+        assert_eq!(
+            order,
+            [
+                ("delete".to_string(), vec!["delete_user".to_string()]),
+                ("load".to_string(), vec!["loadConfig".to_string()])
+            ]
+        );
+        // 動詞で始まる名前、名詞を兼ねる語(start)、テスト関数は報告しない
+        assert_eq!(check("fn delete_user() {}"), vec![]);
+        assert_eq!(check("impl Order { fn line_start(&self) {} }"), vec![]);
+        assert_eq!(check("#[test]\nfn user_delete() {}"), vec![]);
+        // to の後ろは不定詞
+        assert_eq!(check("fn order_to_load() {}"), vec![]);
+    }
+
+    #[test]
+    fn value_names_may_end_with_prepositions() {
+        assert_eq!(check("fn load(from: u8, to: u8) { let started_at = 0; }"), vec![]);
+        // 型名は名詞で終える
+        assert_eq!(
+            check("struct OrderAt;"),
+            vec![("at".into(), Rule::Position, Severity::Info)]
         );
     }
 
